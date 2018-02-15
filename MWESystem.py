@@ -37,13 +37,20 @@ class MWESystem:
     self.type_dataset=type_data_set
     self.PATH = path
     self.files_path = []
+    self.tokens_mwe = set()
     self.mwe_windows = {} #[expression] = [(__target__,__sentence_location__,window_sentence,file_path])...]
+    self.mapTokenXtoCol = None
 
 
   def setup(self):
     self.parseMWEs()
     self.extractFileNames()
     self.parseData()
+
+    all_tokens = list(self.tokens_mwe)
+    all_tokens.sort()
+
+    self.mapTokenXtoCol = [(all_tokens[i],i) for i in xrange(len(self.tokens_mwe))]
 
   def isValidSentence(self,sentence,token=' '):
     if len(sentence) < 30 or token not in sentence:
@@ -285,6 +292,10 @@ class MWESystem:
 
             left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
 
+            self.tokens_mwe = tokens_mwe.union(set(right_windows_sentence))
+            self.tokens_mwe = tokens_mwe.union(set(left_windows_sentence))
+            self.tokens_mwe = tokens_mwe.union(set(__mwe_expression__.split('_')))
+
             if __mwe_expression__ not in self.mwe_windows:
                 self.mwe_windows[__mwe_expression__] = []
 
@@ -318,27 +329,42 @@ class MWESystem:
           window_sentence   = d[2]
 
           if target not in __targets_labels__:
-          	continue
+              continue
 
           for ws in window_sentence:
-          	if ws not in tokens[target]:
-          		tokens[target][ws] = 0
-          	tokens[target][ws] += 1
+              if ws not in tokens[target]:
+                  tokens[target][ws] = 0
+              tokens[target][ws] += 1
        return tokens 
 
-  def buildMatrixTrain(self,data_dev,__targets_labels__='IL'):
+  def buildMatrix(self,data,__targets_labels__='IL'):
       """
           Output
               X: matriz with the token score for each sentence
               Y: target of each sentence
-              mapTokenXtoCol
           
           Input
             [(__target__,__sentence_location__,window_sentence,file_path,expression])...]
 
       """
-      X = [[0 for i in xrange(len(data_dev))] for j in xrange(len(data_dev))]
-      tokens_train_frequency = self.getTokensFrequency(data_dev,__targets_labels__)
+      X = []
+      Y = []
+
+      tokens_frequency = self.getTokensFrequency(data_dev,__targets_labels__)
+
+      for d in data:
+        target            = d[0]
+        window_sentence   = d[2]
+        X.append([0 for i in xrange(len(self.tokens_mwe))]
+        Y.append(target)
+
+        for ws in window_sentence:
+        	if ws in tokens_frequency[target]:
+        		X[self.mapTokenXtoCol[ws]] = tokens_frequency[target][ws]
+        	else:
+        		X[self.mapTokenXtoCol[ws]] += 1
+
+      return X,Y
       
       
 
