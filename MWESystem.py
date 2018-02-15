@@ -310,15 +310,15 @@ class MWESystem:
 
       for exp, datamwe in self.mwe_windows.iteritems():
 
-	      for data in datamwe:
-	          data = list(data)
-	          data.append(exp)
+          for data in datamwe:
+              data = list(data)
+              data.append(exp)
 
-	          sort = random.randint(1,100)
-	          if sort <= dev:
-	              dev_data.append(data)
-	          else:
-	              test_data.append(data)
+              sort = random.randint(1,100)
+              if sort <= dev:
+                  dev_data.append(data)
+              else:
+                  test_data.append(data)
 
       return (dev_data,test_data)
 
@@ -358,16 +358,66 @@ class MWESystem:
         target            = d[0]
         window_sentence   = d[2]
         X.append([0 for i in xrange(len(self.tokens_mwe))])
-        Y.append(target)
+        if target == 'I':
+            Y.append(1)
+        else:
+            Y.append(0)
 
         for ws in window_sentence:
-        	if ws in tokens_frequency[target]:
-        		X[-1][self.mapTokenXtoCol[ws]] = tokens_frequency[target][ws]
-        	else:
-        		X[-1][self.mapTokenXtoCol[ws]] += 1
+            if ws in tokens_frequency[target]:
+                X[-1][self.mapTokenXtoCol[ws]] = tokens_frequency[target][ws]
+            else:
+                X[-1][self.mapTokenXtoCol[ws]] += 1
 
       return (X,Y)
+  
+
+  def testSVM(self,dev,test):
+      clf = svm.SVC()
+      clf.fit(dev['X'], dev['Y'])  
+      resultSVM = {1:0,0:0}
+      TP = 0.0
+      TN = 0.0
+      FP = 0.0
+      FN = 0.0
+
+      for i in xrange(len(test['X'])):
+          result = clf.predict([test['X'][i]])
+          predicted = result[0]
+          target = test['Y'][i]
+          resultSVM[predicted] += 1
+
+          if target == 1:
+              if predicted == target:
+                  TP += 1
+              else:
+                  FN += 1
+          elif target == 0:
+              if predicted == target:
+                  TN += 1
+              else:
+                  FP += 1
+      precision = 0
+      recall = 0
+      F1 = 0
+
+      print 'TP=%.f FP=%.f TN=%.f FN=%f' % (TP,FP,TN,FN)
       
+      if TP+FP != 0:
+        precision = TP/(TP+FP)
+      accuracy  = (TP+TN)/(TP+TN+FP+FN)
+      
+      if TP+FN != 0:
+        recall    = TP/(TP+FN)
+      if recall+precision != 0:
+        F1 = (2*(recall*precision))/(recall+precision)
+
+      print 'result SVM:',resultSVM
+      print precision,accuracy,recall,F1
+          
+
+      
+
 
 
 if "__main__":
@@ -375,4 +425,12 @@ if "__main__":
   c.setup()
   train_data,test_data = c.splitData()
   x_train,y_train = c.buildMatrix(train_data)
+  x_test,y_test = c.buildMatrix(test_data)
+  c.testSVM({'X':x_train,'Y':y_train},{'X':x_test,'Y':y_test})
+
+
+
+
+
+
   
