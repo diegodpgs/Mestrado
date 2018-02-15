@@ -13,7 +13,8 @@ from inspect import currentframe, getframeinfo
   @author: Diego Pedro
   @e-mail: diegogoncalves.silva@inf.ufrgs.br
   
-  this frameword works only with mwe compound of two constituints
+  this framework works only with mwe compound of two constituints
+  this framework works only with binaries dataset I -> idiomatic L -> Literal
   Code Convetions:
 
   __constantName__:  local constant
@@ -29,11 +30,12 @@ class MWESystem:
     self.mwe_file_name = mwe_file_name
     #[folder1][folder2]...[foldern] = [(file_name,position_sentence,target)]
     self.mwe_annotations= {} #a vector of tokens divided into folders
-    self.filename_map_mwesentence = {}
     self.type_dataset=type_data_set
     self.PATH = path
     self.files_path = []
-    self.windows = {} #[expression] = [(target,tokens),(target,tokens)]
+    self.mwe_windows = {} #[expression] = [(target,tokens),(target,tokens)]
+    self.tokens_frequency = {'I':{},'L':{}}
+    self.tokens = []
 
   def setup(self):
     self.parseMWEs()
@@ -128,7 +130,7 @@ class MWESystem:
         if sentence_location not in actual_dic:
           actual_dic[sentence_location] = []
 
-        actual_dic[sentence_location].append((__mwexpression__,__target__)) 
+        actual_dic[sentence_location] = (__mwexpression__,__target__)
 
   #TESTS COPLETED
   def extractFileNames(self):
@@ -239,17 +241,17 @@ class MWESystem:
       right_windows_sentence = right_windows_sentence[0:min(len(right_windows_sentence),10)]
       index = 0
 
-      if len(left_windows_sentence) < length and number-1 in xml_data:
-        previous_sentence = parseTokensSentence(xml_data[number-1])
+      if len(left_windows_sentence) < length and number-1 in dataToken:
+        previous_sentence = self.parseTokensSentence(dataToken[number-1])
         previous_sentence = previous_sentence[::-1]
         index = 0
         while len(left_windows_sentence) < length and index < len(previous_sentence):
           left_windows_sentence.insert(0,previous_sentence[index])
           index += 1
 
-      if len(right_windows_sentence) < length and number+1 in xml_data:
+      if len(right_windows_sentence) < length and number+1 in dataToken:
 
-        next_sentence = parseTokensSentence(xml_data[number+1])
+        next_sentence = self.parseTokensSentence(dataToken[number+1])
         index = 0
         while len(right_windows_sentence) < length and index < len(next_sentence):
           right_windows_sentence.append(next_sentence[index])
@@ -260,47 +262,61 @@ class MWESystem:
   #[exp]= [(label,words_s1),words_s2...]
   #per-expression
   #TOKENS[Label] = {word1: 3, Word2>5}
-  def getWindows(self,tokens,mapSentence,file_xml_name,length=10):
-    expressions = set()
+  def getWindows(self,file_path,__length__=10):
     
-    # folder1, folder2,file_xml = file_xml_name.split('/')[-3],file_xml_name.split('/')[-2],file_xml_name.split('/')[-1].split('.')[0]
+    __folders__   = file_path.split('/')[0:-1]
+    __datamwe__   = None
+    __file_name__ = file_path.split('/')[-1].split('.')[0]
+    tokens_mwe    = set()
+
+    if self.type_dataset == 'xml':
+      __datamwe__ = self.parseXMLfile(file_path)
+    else:
+      __datamwe__ = self.parseCSVfile()
+
+    index_folder = 1
+    sentences_mwe = self.mwe_annotations[__folders__[0]]
+
     
-    # xml_data = parseSentence(file_xml_name)
+    #navigate into folders
+    while index_folder < len(__folders__):
+      sentences_mwe = sentences_mwe[__folders__[index_folder]]
+      index_folder += 1
     
-    # if xml_data == None:
-    #   return None
-    # #print 'Running.....'
-    # if (folder1 not in mapSentence) or (folder2 not in mapSentence[folder1]) or (file_xml not in mapSentence[folder1][folder2]):
-    #   return set()
-    # sentences_mwe = mapSentence[folder1][folder2][file_xml]
-    # #print 'running'
-    # for number, data in sentences_mwe.iteritems():
-    #   expressions.add(data[0])
-    #   expA,expB = data[0].split('_')[0],data[0].split('_')[1]
-    #   label = data[1]
-    #   if label not in 'LI':
-    #     continue
+    if __file_name__ not in sentences_mwe:
+      return None
 
-    #   left_windows_sentence,right_windows_sentence = getOneWindow(expA,expB,xml_data,number,length)
-    #   if left_windows_sentence == -1:
-    #       print 'problem with sentence %d not find within file %s' % (number,file_xml_name)
-    #       continue
-    #   # tokens = tokens.union(set(right_windows_sentence))
-    #   # tokens = tokens.union(set(left_windows_sentence))
-    #   # tokens.add(data[0])
+    for __sentence_location__, data in sentences_mwe[__file_name__].iteritems():
+        
+        __mwe_expression__ = data[0]
+        __target__         = data[1]
+    
+        if __target__ not in 'LI':
+          continue
+        left_windows_sentence,right_windows_sentence = None,None
 
-    #   if data[0] not in windows:
-    #     windows[data[0]] = []
-    #   window_sentence = left_windows_sentence
-    #   window_sentence.extend(right_windows_sentence)
+        left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__,__length__)
+        # except:
+        #     print 'problem with sentence %d not find within file %s' % (__sentence_location__,__file_name__)
+        #     continue
 
-    #   windows[data[0]].append((label,window_sentence))
-    #   for ws in window_sentence:
-    #     if ws not in tokens[label]:
-    #       tokens[label][ws] = 0
-    #     tokens[label][ws] += 1
+        self.tokens_mwe = tokens_mwe.union(set(right_windows_sentence))
+        self.tokens_mwe = tokens_mwe.union(set(left_windows_sentence))
+        self.tokens_mwe = tokens_mwe.union(set(__mwe_expression__.split('_')))
 
-    # return expressions
+        if __mwe_expression__ not in self.mwe_windows:
+            self.mwe_windows[__mwe_expression__] = []
+
+        window_sentence = left_windows_sentence
+        window_sentence.extend(right_windows_sentence)
+
+        self.mwe_windows[__mwe_expression__].append((__target__,window_sentence))
+
+        for ws in window_sentence:
+          if ws not in self.tokens_frequency[__target__]:
+            self.tokens_frequency[__target__][ws] = 0
+          self.tokens_frequency[__target__][ws] += 1
+
 
 
 # #MWE,[0,0,0],LABEL[0-literal,1-idiomatic]
@@ -463,6 +479,8 @@ class MWESystem:
 
 
 if "__main__":
-  c = MWESystem('cook_mwe.txt',os.getcwd()+'/A')
+  c = MWESystem('cook_mwe.txt',os.getcwd()+'/dados')
   c.setup()
-  print c.mwe_annotations['K']
+  c.getWindows('A/A4/A4S.xml')
+
+
