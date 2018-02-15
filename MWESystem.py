@@ -33,6 +33,7 @@ class MWESystem:
     self.type_dataset=type_data_set
     self.PATH = path
     self.files_dataset = []
+    self.windows = {} #[expression] = [(target,tokens),(target,tokens)]
 
   def setup(self):
     self.parseMWEs()
@@ -185,9 +186,9 @@ class MWESystem:
         return None
 
       constituints = sentence.split('<w ')
-      for c in constituints:
+      for c in constituints[1:]:
         if root:
-          print c
+          #print "[[[%s]]]" % c
           tokens.append(c.split('hw="')[1].split('"')[0])
         else:
           tokens.append(c.split('>')[1].split(' </w>')[0])
@@ -201,7 +202,7 @@ class MWESystem:
     xml_sentences = {}
 
     for sentence in xml_data:
-        if not self.isValidSentence(sentence,'<s n='):
+        if not self.isValidSentence(sentence,'<s n="'):
           continue
         sentence_number = int(sentence.split('<s n="')[1].split('"')[0])
         xml_sentences[sentence_number] = sentence
@@ -209,7 +210,7 @@ class MWESystem:
     
     return xml_sentences
 
-  def getOneWindow(self,expression,dataToken, number,length):
+  def getOneWindow(self,expression,dataToken, number,length=10):
       """
         dataToken  = [sentence_number] = sentence
       """
@@ -219,14 +220,15 @@ class MWESystem:
       if number not in dataToken:
   	     raise Exception('A sentenca de numero %d no arquivo Line::%d' % (d,getframeinfo(currentframe()).lineno))
 
-      sentence_parsed = parseTokensSentence(xml_data[number])
+      sentence_parsed = self.parseTokensSentence(dataToken[number])
+
 
       if wordLeft not in sentence_parsed or wordRight not in sentence_parsed:
         raise Exception('the MWE %s does is not within the data Line::%d' % (expression,getframeinfo(currentframe()).lineno))
-
-      left_windows_sentence = sentence_parsed[0:sentence_parsed.index(expA)]
-      left_windows_sentence = left_windows_sentence[0:min(len(left_windows_sentence),10)]
-      right_windows_sentence = sentence_parsed[sentence_parsed.index(expB)+1:]
+      print wordLeft
+      left_windows_sentence = sentence_parsed[0:sentence_parsed.index(wordLeft)]
+      left_windows_sentence = left_windows_sentence[max(0,len(left_windows_sentence)-10):len(left_windows_sentence)]
+      right_windows_sentence = sentence_parsed[sentence_parsed.index(wordRight)+1:]
       right_windows_sentence = right_windows_sentence[0:min(len(right_windows_sentence),10)]
       index = 0
 
@@ -248,53 +250,50 @@ class MWESystem:
 
       return (left_windows_sentence,right_windows_sentence)
 
+  #[exp]= [(label,words_s1),words_s2...]
+  #per-expression
+  #TOKENS[Label] = {word1: 3, Word2>5}
+  def getWindows(self,tokens,mapSentence,file_xml_name,length=10):
+    expressions = set()
+    #print file_xml_name
+    folder1, folder2,file_xml = file_xml_name.split('/')[-3],file_xml_name.split('/')[-2],file_xml_name.split('/')[-1].split('.')[0]
+    
+    xml_data = parseSentence(file_xml_name)
+    
+    if xml_data == None:
+      return None
+    #print 'Running.....'
+    if (folder1 not in mapSentence) or (folder2 not in mapSentence[folder1]) or (file_xml not in mapSentence[folder1][folder2]):
+      return set()
+    sentences_mwe = mapSentence[folder1][folder2][file_xml]
+    #print 'running'
+    for number, data in sentences_mwe.iteritems():
+      expressions.add(data[0])
+      expA,expB = data[0].split('_')[0],data[0].split('_')[1]
+      label = data[1]
+      if label not in 'LI':
+        continue
 
+      left_windows_sentence,right_windows_sentence = getOneWindow(expA,expB,xml_data,number,length)
+      if left_windows_sentence == -1:
+          print 'problem with sentence %d not find within file %s' % (number,file_xml_name)
+          continue
+      # tokens = tokens.union(set(right_windows_sentence))
+      # tokens = tokens.union(set(left_windows_sentence))
+      # tokens.add(data[0])
 
+      if data[0] not in windows:
+        windows[data[0]] = []
+      window_sentence = left_windows_sentence
+      window_sentence.extend(right_windows_sentence)
 
-# #[exp]= [(label,words_s1),words_s2...]
-# #per-expression
-# #TOKENS[Label] = {word1: 3, Word2>5}
-# def getWindows(windows,tokens,mapSentence,file_xml_name,length=10):
-#   expressions = set()
-#   #print file_xml_name
-#   folder1, folder2,file_xml = file_xml_name.split('/')[-3],file_xml_name.split('/')[-2],file_xml_name.split('/')[-1].split('.')[0]
-  
-#   xml_data = parseSentence(file_xml_name)
-  
-#   if xml_data == None:
-#     return None
-#   #print 'Running.....'
-#   if (folder1 not in mapSentence) or (folder2 not in mapSentence[folder1]) or (file_xml not in mapSentence[folder1][folder2]):
-#     return set()
-#   sentences_mwe = mapSentence[folder1][folder2][file_xml]
-#   #print 'running'
-#   for number, data in sentences_mwe.iteritems():
-#     expressions.add(data[0])
-#     expA,expB = data[0].split('_')[0],data[0].split('_')[1]
-#     label = data[1]
-#     if label not in 'LI':
-#       continue
+      windows[data[0]].append((label,window_sentence))
+      for ws in window_sentence:
+        if ws not in tokens[label]:
+          tokens[label][ws] = 0
+        tokens[label][ws] += 1
 
-#     left_windows_sentence,right_windows_sentence = getOneWindow(expA,expB,xml_data,number,length)
-#     if left_windows_sentence == -1:
-#         print 'problem with sentence %d not find within file %s' % (number,file_xml_name)
-#         continue
-#     # tokens = tokens.union(set(right_windows_sentence))
-#     # tokens = tokens.union(set(left_windows_sentence))
-#     # tokens.add(data[0])
-
-#     if data[0] not in windows:
-#       windows[data[0]] = []
-#     window_sentence = left_windows_sentence
-#     window_sentence.extend(right_windows_sentence)
-
-#     windows[data[0]].append((label,window_sentence))
-#     for ws in window_sentence:
-#       if ws not in tokens[label]:
-#         tokens[label][ws] = 0
-#       tokens[label][ws] += 1
-
-#   return expressions
+    return expressions
 
 
 # #MWE,[0,0,0],LABEL[0-literal,1-idiomatic]
@@ -460,10 +459,10 @@ if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/A')
   c.setup()
   xml_file = c.parseXMLfile(c.files_dataset[10])
-  sentenca = xml_file[235]
-  print sentenca
-  print c.parseTokensSentence(sentenca)
-  #c.getOneWindow(expression,dataToken,number)
+  
+  #print sentenca
+  #print c.parseTokensSentence(sentenca)
+  print c.getOneWindow("lose_temper",xml_file,235)
   # #r = c.PATH
   
   # for r, dirs, files in os.walk("."):
