@@ -15,7 +15,7 @@ from inspect import currentframe, getframeinfo
 
   Code Convetions:
 
-  UPERCASE:  variables which does not change 
+  UPPERCASE:  variables which does not change 
              OBS. It is note used locally in small methods.
   lowercase: variables may change
 
@@ -35,7 +35,7 @@ class MWESystem:
     if len(list_data[-1]) < 2:
       return list_data[0:-1]
     return list_data
-    
+
   def parseCookMWE(self):
       """
         FORMAT:  target mwe folder1/folder2/folder3 .... folderN/filename sentence_location
