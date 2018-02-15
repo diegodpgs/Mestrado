@@ -12,7 +12,8 @@ from inspect import currentframe, getframeinfo
 """
   @author: Diego Pedro
   @e-mail: diegogoncalves.silva@inf.ufrgs.br
-
+  
+  this frameword works only with mwe compound of two constituints
   Code Convetions:
 
   __constantName__:  local constant
@@ -35,8 +36,14 @@ class MWESystem:
 
   def setup(self):
     self.parseMWEs()
-    #self.extractFiles()
+    self.extractFiles()
 
+  def isValidSentence(self,sentence,token=' '):
+    if len(sentence) < 30 or token not in sentence:
+      return False 
+
+    else:
+      return True
 
   def removeLNlist(self,list_data):
     if len(list_data[-1]) < 2:
@@ -84,9 +91,8 @@ class MWESystem:
         try:
           sentence_position = int(__samplesplited__[-1])
         except ValueError:
-          frameinfo = getframeinfo(currentframe())
           print 'Exception'
-          print 'Sentence position must be integer not a string: Line::%d' % frameinfo.lineno
+          print 'Sentence position must be integer not a string: Line::%d' % getframeinfo(currentframe()).lineno
           continue
 
         
@@ -116,8 +122,9 @@ class MWESystem:
 
         actual_dic[folder].append((__file_name__,sentence_position,__target__))
 
-  def extracFiles(self):
-
+  #TESTS COPLETED
+  def extractFiles(self):
+    actualPATH = os.getcwd()
     os.chdir(self.PATH)
 
     for path, dirs, files in os.walk("."):
@@ -125,70 +132,115 @@ class MWESystem:
         files_path = os.listdir(os.getcwd()+path[1:])
         for file_xml in files_path:
           self.files_dataset.append('%s/%s' % (path[2:],file_xml))
+    os.chdir(actualPATH)
 
-#   def recursiveFil
-# def parseRootTokens(sentence): 
-#   rooted = sentence.split('hw="')
-#   roots = []
-#   for s in rooted:
-#     roots.append(s.split('"')[0])
-#   return roots[1:]
+  # def parseData(self):
+  
+  #   windows = {}
+  #   tokens = {'L':{},'I':{}}
+  #   expressions = set()
+  #   count = 0.0
+  #   for file_name in files:
+  #     count += 1
+  #     if count % 50 ==0:
+  #   print '%.3f' % (count/len(files))
+  #     r = getWindows(windows,tokens,mapSentence,file_name)
+  #     if r == None:
+  #       continue
+  #     #print 'SIZE WINDOWS',len(windows.keys())#print 'Windows computed for the file',file_name
+      
+  #   return (windows,tokens)
 
-# def parseOriginalTokens(sentence): 
-#   rooted = sentence.split('</w>')
-#   roots = []
-#   for s in rooted:
-#     roots.append(s.split('>')[-1])
-#   return roots[:-1]
+  #TESTS COPLETED
+  def parseTokensSentence(self,sentence,root=True):
+    """
+       CSV: fala|falar|VFIN.PR.3S.IND
+            original|root|POS|
+
+       XML: <w c5="VVD" hw="see" pos="VERB">saw </w>
+              postype       root   pos       original
+
+    """ 
+    tokens = []
+
+    if self.type_dataset == 'csv':
+      constituints = sentence.split()
+
+      for c in constituints:
+        if '|' not in c:
+          raise Exception('| was not found in sentence line::%d' % getframeinfo(currentframe()).lineno)
+
+        if len(c.split()) < 2:
+          raise Exception('sentence is not well formed::%d' % getframeinfo(currentframe()).lineno)
+
+        if root:
+          tokens.append(c.split('|')[0])
+        else:
+          tokens.append(c.split('|')[1])
+
+    else:
+      if '<w ' not in sentence:
+        return None
+
+      constituints = sentence.split('<w ')
+      for c in constituints:
+        if root:
+          tokens.append(c.split('hw="')[1].split('"')[0])
+        else:
+          tokens.append(c.split('>')[1].split(' </w>')[0])
 
 
-# def getOneWindow(expA,expB,xml_data,number,length):
-#     if number not in xml_data:
-# 	return -1,-1
+    return tokens
 
-#     sentence_root = parseRootTokens(xml_data[number])
+    
+  def parseXMLfile(self,xml_file_name):
+    xml_data = self.removeLNlist(open('%s/%s' %(self.PATH,xml_file_name)).read().split('\n'))
+    
+    xml_sentences = {}
 
-#     if expA not in sentence_root or expB not in sentence_root:
-#       return None,None
+    for sentence in xml_data:
+        if not self.isValidSentence(sentence,'<s n='):
+          continue
+        sentence_number = int(sentence.split('<s n="')[1].split('"')[0])
+        xml_sentences[sentence_number] = sentence
 
-#     left_windows_sentence = sentence_root[0:sentence_root.index(expA)]
-#     left_windows_sentence = left_windows_sentence[0:min(len(left_windows_sentence),10)]
-#     right_windows_sentence = sentence_root[sentence_root.index(expB)+1:]
-#     right_windows_sentence = right_windows_sentence[0:min(len(right_windows_sentence),10)]
-#     index = 0
+    
+    return xml_sentences
 
-#     if len(left_windows_sentence) < length and number-1 in xml_data:
-#       previous_sentence = parseRootTokens(xml_data[number-1])
-#       previous_sentence = previous_sentence[::-1]
-#       index = 0
-#       while len(left_windows_sentence) < length and index < len(previous_sentence):
-#         left_windows_sentence.insert(0,previous_sentence[index])
-#         index += 1
+  def getOneWindow(self,expression,number,length):
+      if number not in xml_data:
+  	     return -1,-1
 
-#     if len(right_windows_sentence) < length and number+1 in xml_data:
+      sentence_root = parseRootTokens(xml_data[number])
 
-#       next_sentence = parseRootTokens(xml_data[number+1])
-#       index = 0
-#       while len(right_windows_sentence) < length and index < len(next_sentence):
-#         right_windows_sentence.append(next_sentence[index])
-#         index += 1
+      if expA not in sentence_root or expB not in sentence_root:
+        return None,None
 
-#     return (left_windows_sentence,right_windows_sentence)
+      left_windows_sentence = sentence_root[0:sentence_root.index(expA)]
+      left_windows_sentence = left_windows_sentence[0:min(len(left_windows_sentence),10)]
+      right_windows_sentence = sentence_root[sentence_root.index(expB)+1:]
+      right_windows_sentence = right_windows_sentence[0:min(len(right_windows_sentence),10)]
+      index = 0
 
-# def parseSentence(file_xml_name):
-#   xml_data = open('%s' % file_xml_name).read().split('\n')[2:]
-#   #try:
-#   d = {}
-#   for line in xml_data[1:-1]:
-#       if len(line) < 30 or '<s n="' not in line:
-# 	continue
-#       try:
-#       	sentence_number = int(line.split('<s n="')[1].split('"')[0])
-# 	d[sentence_number] = line
-#       except:
-# 	continue
-#   #print '%.3f %% VALID SENTENCES' % (len(d.keys())/float(len(xml_data)))
-#   return d
+      if len(left_windows_sentence) < length and number-1 in xml_data:
+        previous_sentence = parseRootTokens(xml_data[number-1])
+        previous_sentence = previous_sentence[::-1]
+        index = 0
+        while len(left_windows_sentence) < length and index < len(previous_sentence):
+          left_windows_sentence.insert(0,previous_sentence[index])
+          index += 1
+
+      if len(right_windows_sentence) < length and number+1 in xml_data:
+
+        next_sentence = parseRootTokens(xml_data[number+1])
+        index = 0
+        while len(right_windows_sentence) < length and index < len(next_sentence):
+          right_windows_sentence.append(next_sentence[index])
+          index += 1
+
+      return (left_windows_sentence,right_windows_sentence)
+
+
 
 
 # #[exp]= [(label,words_s1),words_s2...]
@@ -236,24 +288,6 @@ class MWESystem:
 
 #   return expressions
 
-
-
-# def getData(mapSentence,files):
-  
-#   windows = {}
-#   tokens = {'L':{},'I':{}}
-#   expressions = set()
-#   count = 0.0
-#   for file_name in files:
-#     count += 1
-#     if count % 50 ==0:
-# 	print '%.3f' % (count/len(files))
-#     r = getWindows(windows,tokens,mapSentence,file_name)
-#     if r == None:
-#       continue
-#     #print 'SIZE WINDOWS',len(windows.keys())#print 'Windows computed for the file',file_name
-    
-#   return (windows,tokens)
 
 # #MWE,[0,0,0],LABEL[0-literal,1-idiomatic]
 # def normalizeVectors(windows,tokens,exp):
@@ -416,8 +450,7 @@ class MWESystem:
 
 if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/A')
-  c.extracFiles()
-  # c.setup()
+  c.setup()
   # #r = c.PATH
   
   # for r, dirs, files in os.walk("."):
