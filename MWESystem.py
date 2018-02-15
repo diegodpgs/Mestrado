@@ -5,6 +5,7 @@ import random
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from sklearn import svm
+import nltk
 import numpy as np
 from inspect import currentframe, getframeinfo
 
@@ -36,9 +37,8 @@ class MWESystem:
     self.type_dataset=type_data_set
     self.PATH = path
     self.files_path = []
-    self.mwe_windows = {} #[expression] = [(target,tokens,sentence_location),(target,sentence_location,tokens)]
-    self.tokens_frequency = {'I':{},'L':{}}
-    self.tokens_dataset = set()
+    self.mwe_windows = {} #[expression] = [(__target__,__sentence_location__,window_sentence,file_path])...]
+
 
   def setup(self):
     self.parseMWEs()
@@ -291,24 +291,42 @@ class MWESystem:
             window_sentence = left_windows_sentence
             window_sentence.extend(right_windows_sentence)
 
-            self.mwe_windows[__mwe_expression__].append((__target__,__sentence_location__,window_sentence))
+            self.mwe_windows[__mwe_expression__].append((__target__,__sentence_location__,window_sentence,file_path))
 
   def splitDataByExpression(self,expression,dev=75,test=25):
-  	test_data = []
-  	dev_data  = []
+      test_data = []
+      dev_data  = []
 
-  	for data in self.mwe_windows[expression]:
+      for data in self.mwe_windows[expression]:
+          data = list(data)
+          data.append(expression)
 
-  		sort = random.randint(1,100)
-  		if sort <= dev:
-  			dev_data.append(data)
-  		else:
-  			test_data.append(data)
+          sort = random.randint(1,100)
+          if sort <= dev:
+              dev_data.append(data)
+          else:
+              test_data.append(data)
 
-  	return (test_data,dev_data)
+      return (test_data,dev_data)
 
 
-  def normalizeVectors(self,mwexpression):
+  def getTokensFrequency(self,data,__targets_labels__):
+      tokens_frequency = {'I':{},'L':{}}
+      
+      for d in data:
+          target            = d[0]
+          window_sentence   = d[2]
+
+          if target not in __targets_labels__:
+          	continue
+
+          for ws in window_sentence:
+          	if ws not in tokens[target]:
+          		tokens[target][ws] = 0
+          	tokens[target][ws] += 1
+       return tokens 
+
+  def buildMatrixTrain(self,data_dev,__targets_labels__='IL'):
       """
           Output
               X: matriz with the token score for each sentence
@@ -316,39 +334,14 @@ class MWESystem:
               mapTokenXtoCol
           
           Input
-              mwexpression
-                      windows from each setence which the mwe above is presente
-              
-              tokens_frequency_by_target
+            [(__target__,__sentence_location__,window_sentence,file_path,expression])...]
 
       """
-      win_exp = self.windows[mwexpression]
-      # tokens_exp = set(self.tokens['L'].keys())
-      # tokens_total = list(tokens_total.union(set(tokens['I'].keys())))
-      # mapTokenXtoCol = dict([(tokens_total[i],i) for i in xrange(len(self.tokens_dataset))])
-
-      # #expression, ocorrence,label
-      # MATRIX = []
-      # labels = []
+      X = [[0 for i in xrange(len(data_dev))] for j in xrange(len(data_dev))]
+      tokens_train_frequency = self.getTokensFrequency(data_dev,__targets_labels__)
       
-      # for ds in win_exp:
-      #     label,words = ds[0],ds[1]
+      
 
-      #     if label not in 'LI':
-      #       continue
-
-      #     MATRIX.append([0 for i in xrange(len(tokens_total))])
-
-      #     for word in words:
-      #       indexTotoken = vectorMAPindex[word]
-      #       MATRIX[-1][indexTotoken] = tokens[label][word]
-
-      #     if label == 'I':
-      #       labels.append(1)
-      #     else:
-      #       labels.append(0)
-
-      # return (MATRIX,labels)
 
 # #proxima etapa, normalizar os dados para os vetores
 # def test(mapSentence,data_train,data_test):
