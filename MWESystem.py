@@ -308,8 +308,6 @@ class MWESystem:
   	return (test_data,dev_data)
 
 
-
-
   def normalizeVectors(self,mwexpression):
       """
           Output
@@ -483,7 +481,7 @@ class MWESystem:
 if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
   c.setup()
-  c.splitDataByExpression('blow_smoke')
+  train,test = c.splitDataByExpression('blow_smoke')
 
 
 
