@@ -15,20 +15,27 @@ from inspect import currentframe, getframeinfo
 
   Code Convetions:
 
-  UPPERCASE:  variables which does not change 
-             OBS. It is note used locally in small methods.
-  lowercase: variables may change
+  __constantName__:  local constant
+  CONSTANT        :  global constant
 
 """
 
 class MWESystem:
 
 
-  def __init__(self,mwe_file_name,type_data_set='xml'):
+  def __init__(self,mwe_file_name,path,type_data_set='xml'):
     self.dataset = None
     self.mwe_file_name = mwe_file_name
+    #[folder1][folder2]...[foldern] = [(file_name,position_sentence,target)]
     self.sentences = {} #a vector of tokens divided into folders
-    self.type_dataset=type_data_set;
+    self.sentences_map = {}
+    self.type_dataset=type_data_set
+    self.PATH = path
+    self.files_dataset = []
+
+  def setup(self):
+    self.parseMWEs()
+    #self.extractFiles()
 
 
   def removeLNlist(self,list_data):
@@ -36,7 +43,8 @@ class MWESystem:
       return list_data[0:-1]
     return list_data
 
-  def parseCookMWE(self):
+  #TESTS COPLETED
+  def parseMWEs(self):
       """
         FORMAT:  target mwe folder1/folder2/folder3 .... folderN/filename sentence_location
                  I touch_nerve C/CA/CAD 2989
@@ -52,6 +60,9 @@ class MWESystem:
 
                  mwe: Multi-Word-Expression constituints separated by '_'
 
+        AFTER PARSER
+        [folder1][folder2]...[foldern] = [(file_name,position_sentence,target)]
+
 
       """
 
@@ -63,15 +74,15 @@ class MWESystem:
       data_set_file = self.removeLNlist(data_set_file)
 
       for sample in data_set_file:
-        sample_splited = sample.split()
-        target = sample_splited[0]
-        mw_expression = sample_splited[1]
-        folders = sample_splited[2].split('/')
-        file_name = '%s.%s' % (folders[-1],self.type_dataset)
+        __samplesplited__ = sample.split()
+        __target__        = __samplesplited__[0]
+        __mwexpression__  = __samplesplited__[1]
+        __folders__       = __samplesplited__[2].split('/')
+        __file_name__     = '%s.%s' % (__folders__[-1],self.type_dataset)
         sentence_position = -1
 
         try:
-          sentence_position = int(sample_splited[-1])
+          sentence_position = int(__samplesplited__[-1])
         except ValueError:
           frameinfo = getframeinfo(currentframe())
           print 'Exception'
@@ -79,25 +90,23 @@ class MWESystem:
           continue
 
         
-        if mw_expression not in self.sentences:
-            self.sentences[mw_expression] = {}
+        if __mwexpression__ not in self.sentences:
+            self.sentences[__mwexpression__] = {}
 
+        folder = __folders__[0]
+        if folder not in self.sentences[__mwexpression__]:
+          self.sentences[__mwexpression__] = {folder:{}}
 
-        
-        folder = folders[0]
-        if folder not in self.sentences[mw_expression]:
-          self.sentences[mw_expression] = {folder:{}}
-
-        actual_dic = self.sentences[mw_expression][folder]
+        actual_dic = self.sentences[__mwexpression__][folder]
         index_folder = 1
         
-        while index_folder < len(folders)-1: #since the last folder is the file_name
-          folder = folders[index_folder]
+        while index_folder < len(__folders__)-1: #since the last folder is the file_name
+          folder = __folders__[index_folder]
 
           if folder not in actual_dic:
               actual_dic[folder] = {}
 
-          if index_folder+2 == len(folders):
+          if index_folder+2 == len(__folders__):
             if type(actual_dic[folder]) == dict:
                 actual_dic[folder] = []
           else:
@@ -105,38 +114,19 @@ class MWESystem:
 
           index_folder += 1
 
-        actual_dic[folder].append((file_name,sentence_position,target))
-      
+        actual_dic[folder].append((__file_name__,sentence_position,__target__))
 
-# #L blow_smoke A/AD/ADA 693
-# #[A][AD][ADA][693] = [blow_moke,L]
-# def mapToSentence(cookMWE):
-#   sentence_map = {}
+  def extracFiles(self):
 
-#   for expression, data in cookMWE.iteritems():
-#     for folder, data2 in data.iteritems():
-#       #print folder
-#       for celula in data2:
-#         folder3 = celula[0].split('/')[-1]
-#         folder2 = celula[0].split('/')[0]
-#         sentence = celula[1]
-#         label = celula[2]
+    os.chdir(self.PATH)
 
-#         if folder not in sentence_map:
-#           sentence_map[folder] = {}
-        
-#         if folder2 not in sentence_map[folder]:
-#           sentence_map[folder][folder2] = {}
+    for path, dirs, files in os.walk("."):
+      if './.' not in path and len(path) > 1:
+        files_path = os.listdir(os.getcwd()+path[1:])
+        for file_xml in files_path:
+          self.files_dataset.append('%s/%s' % (path[2:],file_xml))
 
-#         if folder3 not in sentence_map[folder][folder2]:
-#           sentence_map[folder][folder2][folder3] = {}
-
-#         if sentence not in sentence_map[folder][folder2][folder3]:
-#           sentence_map[folder][folder2][folder3][sentence] = []
-#         sentence_map[folder][folder2][folder3][sentence] = [expression,label]
-#     #print 'expression ',expression,' mapped to sentence'
-#   return sentence_map
-
+#   def recursiveFil
 # def parseRootTokens(sentence): 
 #   rooted = sentence.split('hw="')
 #   roots = []
@@ -246,19 +236,7 @@ class MWESystem:
 
 #   return expressions
 
-# def getFiles(FOLDER_DATA):
-#   files = []
-#   PATH = os.getcwd()+'/'+FOLDER_DATA
-#   for folder in os.listdir(PATH):
-#     if '.DS_Store' in folder:
-#       continue
-#     for subfolder in os.listdir('%s/%s' % (PATH,folder)):
-#       if '.DS_Store' in subfolder:
-#         continue
-#       for file_xml_name in os.listdir('%s/%s/%s' % (PATH,folder,subfolder)):
-#         SUB_PATH = '%s/%s/%s' % (PATH,folder,subfolder)
-#         files.append('%s/%s' % (SUB_PATH,file_xml_name))
-#   return files
+
 
 # def getData(mapSentence,files):
   
@@ -437,8 +415,12 @@ class MWESystem:
 
 
 if "__main__":
-  c = MWESystem('cook_mwe.txt')
-  c.parseCookMWE()
-  print c.sentences
+  c = MWESystem('cook_mwe.txt',os.getcwd()+'/A')
+  c.extracFiles()
+  # c.setup()
+  # #r = c.PATH
+  
+  # for r, dirs, files in os.walk("."):
+  #   print r
 
-
+  # 
