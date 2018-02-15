@@ -15,6 +15,9 @@ from inspect import currentframe, getframeinfo
   
   this framework works only with mwe compound of two constituints
   this framework works only with binaries dataset I -> idiomatic L -> Literal
+  all data are at the same folder
+  Use sentence_location from self.mwe_windows to split data in dev and test
+
   Code Convetions:
 
   __constantName__:  local constant
@@ -33,14 +36,14 @@ class MWESystem:
     self.type_dataset=type_data_set
     self.PATH = path
     self.files_path = []
-    self.mwe_windows = {} #[expression] = [(target,tokens),(target,tokens)]
+    self.mwe_windows = {} #[expression] = [(target,tokens,sentence_location),(target,sentence_location,tokens)]
     self.tokens_frequency = {'I':{},'L':{}}
     self.tokens_dataset = set()
 
   def setup(self):
     self.parseMWEs()
     self.extractFileNames()
-    #self.mapFileSentence()
+    self.parseData()
 
   def isValidSentence(self,sentence,token=' '):
     if len(sentence) < 30 or token not in sentence:
@@ -119,10 +122,6 @@ class MWESystem:
           if folder not in actual_dic:
               actual_dic[folder] = {}
 
-          # if index_folder+1 == len(__folders__):
-          #   if type(actual_dic[folder]) == dict:
-          #       actual_dic[folder] = []
-          # else:
           actual_dic = actual_dic[folder]
 
           index_folder += 1
@@ -143,41 +142,9 @@ class MWESystem:
 
         for file_mwe in file_path:
           if self.type_dataset in file_mwe: #it is useful because the os.walk get also the directories names
-          	self.files_path.append('%s/%s' % (path[2:],file_mwe))
+              self.files_path.append('%s/%s' % (path[2:],file_mwe))
     os.chdir(actualPATH)
 
-  def parseData(self):
-     """
-       From everyfile verify if it is within mwe_anottations
-       TODO: Optimize this
-     """
-     for file_path in self.files_path:
-            print 'processing...',file_path
-            __folders__   = file_path.split('/')[0:-1]
-            __datamwe__   = None
-            __file_name__ = file_path.split('/')[-1].split('.')[0]
-
-            index_folder = 1
-            annotations_mwe = self.mwe_annotations[__folders__[0]]
-
-            
-            #navigate into folders
-            while index_folder < len(__folders__):
-              annotations_mwe = annotations_mwe[__folders__[index_folder]]
-              index_folder += 1
-            
-            if __file_name__ not in annotations_mwe:
-              continue
-
-            if self.type_dataset == 'xml':
-              __datamwe__ = self.parseXMLfile(file_path)
-            else:
-              __datamwe__ = self.parseCSVfile()
-
-            result = self.getWindows(__file_name__,annotations_mwe,__datamwe__)
-
-            if result == None:
-               continue
       
   #TESTS COPLETED
   def parseTokensSentence(self,sentence,root=True):
@@ -234,8 +201,8 @@ class MWESystem:
         sentence_location = sentence.split('<s n="')[1].split('"')[0]
 
         if not sentence_location.isdigit():
-        	print 'sentence location %s from file_name: %s is not numeric Line::%d' % (sentence_location,xml_file_name,getframeinfo(currentframe()).lineno)
-        	continue
+            print 'sentence location %s from file_name: %s is not numeric Line::%d' % (sentence_location,xml_file_name,getframeinfo(currentframe()).lineno)
+            continue
         xml_sentences[int(sentence_location)] = sentence
 
     
@@ -281,66 +248,109 @@ class MWESystem:
 
       return (left_windows_sentence,right_windows_sentence)
 
-  def getWindows(self,__file_name__,__annotations_mwe__,__datamwe__,__length__=10):    
-    #print __datamwe__.keys()
-    for __sentence_location__, data in __annotations_mwe__[__file_name__].iteritems():
-        __mwe_expression__ = data[0]
-        __target__         = data[1]
-    
-        if __target__ not in 'LI':
-          continue
-        left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__,__length__)
+  def parseData(self):
+     """
+       From every file verify wheter it is within mwe_anottations or not
+       TODO: Optimize this
+     """
+     for file_path in self.files_path:
+        print 'processing...',file_path
+        __folders__   = file_path.split('/')[0:-1]
+        __datamwe__   = None
+        __file_name__ = file_path.split('/')[-1].split('.')[0]
+
+        index_folder = 1
+        annotations_mwe = self.mwe_annotations[__folders__[0]]
+
         
+        #navigate into folders
+        while index_folder < len(__folders__):
+          annotations_mwe = annotations_mwe[__folders__[index_folder]]
+          index_folder += 1
+        
+        if __file_name__ not in annotations_mwe:
+          continue
 
-        # self.tokens_dataset = self.tokens_dataset.union(set(right_windows_sentence))
-        # self.tokens_dataset = self.tokens_dataset.union(set(left_windows_sentence))
-        # self.tokens_dataset = self.tokens_dataset.union(set(__mwe_expression__.split('_')))
+        if self.type_dataset == 'xml':
+          __datamwe__ = self.parseXMLfile(file_path)
+        else:
+          __datamwe__ = self.parseCSVfile()
 
-        # if __mwe_expression__ not in self.mwe_windows:
-        #     self.mwe_windows[__mwe_expression__] = []
+        for __sentence_location__, data in annotations_mwe[__file_name__].iteritems():
+            __mwe_expression__ = data[0]
+            __target__         = data[1]
+        
+            if __target__ not in 'LI':
+              continue
 
-        # window_sentence = left_windows_sentence
-        # window_sentence.extend(right_windows_sentence)
+            left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
 
-        # self.mwe_windows[__mwe_expression__].append((__target__,window_sentence))
+            if __mwe_expression__ not in self.mwe_windows:
+                self.mwe_windows[__mwe_expression__] = []
 
-        # for ws in window_sentence:
-        #   if ws not in self.tokens_frequency[__target__]:
-        #     self.tokens_frequency[__target__][ws] = 0
-        #   self.tokens_frequency[__target__][ws] += 1
+            window_sentence = left_windows_sentence
+            window_sentence.extend(right_windows_sentence)
+
+            self.mwe_windows[__mwe_expression__].append((__target__,__sentence_location__,window_sentence))
+
+  def splitDataByExpression(self,expression,dev=75,test=25):
+  	test_data = []
+  	dev_data  = []
+
+  	for data in self.mwe_windows[expression]:
+
+  		sort = random.randint(1,100)
+  		if sort <= dev:
+  			dev_data.append(data)
+  		else:
+  			test_data.append(data)
+
+  	return (test_data,dev_data)
 
 
 
-# #MWE,[0,0,0],LABEL[0-literal,1-idiomatic]
-# def normalizeVectors(windows,tokens,exp):
-#   #[exp]= [(label,words_s1),words_s2...]
-#   win_exp = windows[exp]
-#   tokens_total = set(tokens['L'].keys())
-#   tokens_total = list(tokens_total.union(set(tokens['I'].keys())))
-#   vectorMAPindex = dict([(tokens_total[i],i) for i in xrange(len(tokens_total))])
 
-#   #expression, ocorrence,label
-#   MATRIX = []
-#   labels = []
-  
-#   for ds in win_exp:
-#       label,words = ds[0],ds[1]
+  def normalizeVectors(self,mwexpression):
+      """
+          Output
+              X: matriz with the token score for each sentence
+              Y: target of each sentence
+              mapTokenXtoCol
+          
+          Input
+              mwexpression
+                      windows from each setence which the mwe above is presente
+              
+              tokens_frequency_by_target
 
-#       if label not in 'LI':
-#         continue
+      """
+      win_exp = self.windows[mwexpression]
+      # tokens_exp = set(self.tokens['L'].keys())
+      # tokens_total = list(tokens_total.union(set(tokens['I'].keys())))
+      # mapTokenXtoCol = dict([(tokens_total[i],i) for i in xrange(len(self.tokens_dataset))])
 
-#       MATRIX.append([0 for i in xrange(len(tokens_total))])
+      # #expression, ocorrence,label
+      # MATRIX = []
+      # labels = []
+      
+      # for ds in win_exp:
+      #     label,words = ds[0],ds[1]
 
-#       for word in words:
-#         indexTotoken = vectorMAPindex[word]
-#         MATRIX[-1][indexTotoken] = tokens[label][word]
+      #     if label not in 'LI':
+      #       continue
 
-#       if label == 'I':
-#         labels.append(1)
-#       else:
-#         labels.append(0)
+      #     MATRIX.append([0 for i in xrange(len(tokens_total))])
 
-#   return (MATRIX,labels)
+      #     for word in words:
+      #       indexTotoken = vectorMAPindex[word]
+      #       MATRIX[-1][indexTotoken] = tokens[label][word]
+
+      #     if label == 'I':
+      #       labels.append(1)
+      #     else:
+      #       labels.append(0)
+
+      # return (MATRIX,labels)
 
 # #proxima etapa, normalizar os dados para os vetores
 # def test(mapSentence,data_train,data_test):
@@ -473,7 +483,7 @@ class MWESystem:
 if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
   c.setup()
-  c.parseData()
+  c.splitDataByExpression('blow_smoke')
 
 
 
