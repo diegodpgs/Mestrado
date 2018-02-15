@@ -160,6 +160,8 @@ class MWESystem:
        XML: <w c5="VVD" hw="see" pos="VERB">saw </w>
               postype       root   pos       original
 
+       return only tokens from the sentence
+
     """ 
     tokens = []
 
@@ -179,12 +181,13 @@ class MWESystem:
           tokens.append(c.split('|')[1])
 
     else:
-      if '<w ' not in sentence:
+      if '<w ' not in sentence or 'hw="' not in sentence:
         return None
 
       constituints = sentence.split('<w ')
       for c in constituints:
         if root:
+          print c
           tokens.append(c.split('hw="')[1].split('"')[0])
         else:
           tokens.append(c.split('>')[1].split(' </w>')[0])
@@ -192,7 +195,6 @@ class MWESystem:
 
     return tokens
 
-    
   def parseXMLfile(self,xml_file_name):
     xml_data = self.removeLNlist(open('%s/%s' %(self.PATH,xml_file_name)).read().split('\n'))
     
@@ -207,23 +209,29 @@ class MWESystem:
     
     return xml_sentences
 
-  def getOneWindow(self,expression,number,length):
-      if number not in xml_data:
-  	     return -1,-1
+  def getOneWindow(self,expression,dataToken, number,length):
+      """
+        dataToken  = [sentence_number] = sentence
+      """
 
-      sentence_root = parseRootTokens(xml_data[number])
+      wordLeft,wordRight = expression.split('_')[0],expression.split('_')[1]
 
-      if expA not in sentence_root or expB not in sentence_root:
-        return None,None
+      if number not in dataToken:
+  	     raise Exception('A sentenca de numero %d no arquivo Line::%d' % (d,getframeinfo(currentframe()).lineno))
 
-      left_windows_sentence = sentence_root[0:sentence_root.index(expA)]
+      sentence_parsed = parseTokensSentence(xml_data[number])
+
+      if wordLeft not in sentence_parsed or wordRight not in sentence_parsed:
+        raise Exception('the MWE %s does is not within the data Line::%d' % (expression,getframeinfo(currentframe()).lineno))
+
+      left_windows_sentence = sentence_parsed[0:sentence_parsed.index(expA)]
       left_windows_sentence = left_windows_sentence[0:min(len(left_windows_sentence),10)]
-      right_windows_sentence = sentence_root[sentence_root.index(expB)+1:]
+      right_windows_sentence = sentence_parsed[sentence_parsed.index(expB)+1:]
       right_windows_sentence = right_windows_sentence[0:min(len(right_windows_sentence),10)]
       index = 0
 
       if len(left_windows_sentence) < length and number-1 in xml_data:
-        previous_sentence = parseRootTokens(xml_data[number-1])
+        previous_sentence = parseTokensSentence(xml_data[number-1])
         previous_sentence = previous_sentence[::-1]
         index = 0
         while len(left_windows_sentence) < length and index < len(previous_sentence):
@@ -232,7 +240,7 @@ class MWESystem:
 
       if len(right_windows_sentence) < length and number+1 in xml_data:
 
-        next_sentence = parseRootTokens(xml_data[number+1])
+        next_sentence = parseTokensSentence(xml_data[number+1])
         index = 0
         while len(right_windows_sentence) < length and index < len(next_sentence):
           right_windows_sentence.append(next_sentence[index])
@@ -451,6 +459,11 @@ class MWESystem:
 if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/A')
   c.setup()
+  xml_file = c.parseXMLfile(c.files_dataset[10])
+  sentenca = xml_file[235]
+  print sentenca
+  print c.parseTokensSentence(sentenca)
+  #c.getOneWindow(expression,dataToken,number)
   # #r = c.PATH
   
   # for r, dirs, files in os.walk("."):
