@@ -28,16 +28,17 @@ class MWESystem:
     self.dataset = None
     self.mwe_file_name = mwe_file_name
     #[folder1][folder2]...[foldern] = [(file_name,position_sentence,target)]
-    self.sentences = {} #a vector of tokens divided into folders
-    self.sentences_map = {}
+    self.mwe_annotations= {} #a vector of tokens divided into folders
+    self.filename_map_mwesentence = {}
     self.type_dataset=type_data_set
     self.PATH = path
-    self.files_dataset = []
+    self.files_path = []
     self.windows = {} #[expression] = [(target,tokens),(target,tokens)]
 
   def setup(self):
     self.parseMWEs()
-    self.extractFiles()
+    self.extractFileNames()
+    #self.mapFileSentence()
 
   def isValidSentence(self,sentence,token=' '):
     if len(sentence) < 30 or token not in sentence:
@@ -54,6 +55,9 @@ class MWESystem:
   #TESTS COPLETED
   def parseMWEs(self):
       """
+        # Since the dataset may be huge. We should not read the whole dataset at once
+        # This map is useful because we can read one by one without load everything on the memory
+        
         FORMAT:  target mwe folder1/folder2/folder3 .... folderN/filename sentence_location
                  I touch_nerve C/CA/CAD 2989
                  
@@ -87,44 +91,47 @@ class MWESystem:
         __mwexpression__  = __samplesplited__[1]
         __folders__       = __samplesplited__[2].split('/')
         __file_name__     = '%s.%s' % (__folders__[-1],self.type_dataset)
-        sentence_position = -1
+        sentence_location = -1
 
         try:
-          sentence_position = int(__samplesplited__[-1])
+          sentence_location = int(__samplesplited__[-1])
         except ValueError:
           print 'Exception'
           print 'Sentence position must be integer not a string: Line::%d' % getframeinfo(currentframe()).lineno
           continue
 
         
-        if __mwexpression__ not in self.sentences:
-            self.sentences[__mwexpression__] = {}
+        # if __mwexpression__ not in self.mwe_annotations:
+        #     self.mwe_annotations[__mwexpression__] = {}
 
         folder = __folders__[0]
-        if folder not in self.sentences[__mwexpression__]:
-          self.sentences[__mwexpression__] = {folder:{}}
+        if folder not in self.mwe_annotations:#[__mwexpression__]:
+          self.mwe_annotations[folder] = {}
 
-        actual_dic = self.sentences[__mwexpression__][folder]
+        actual_dic = self.mwe_annotations[folder]
         index_folder = 1
         
-        while index_folder < len(__folders__)-1: #since the last folder is the file_name
+        while index_folder < len(__folders__):#-1: #since the last folder is the file_name
           folder = __folders__[index_folder]
 
           if folder not in actual_dic:
               actual_dic[folder] = {}
 
-          if index_folder+2 == len(__folders__):
-            if type(actual_dic[folder]) == dict:
-                actual_dic[folder] = []
-          else:
-            actual_dic = actual_dic[folder]
+          # if index_folder+1 == len(__folders__):
+          #   if type(actual_dic[folder]) == dict:
+          #       actual_dic[folder] = []
+          # else:
+          actual_dic = actual_dic[folder]
 
           index_folder += 1
+        
+        if sentence_location not in actual_dic:
+          actual_dic[sentence_location] = []
 
-        actual_dic[folder].append((__file_name__,sentence_position,__target__))
+        actual_dic[sentence_location].append((__mwexpression__,__target__)) 
 
   #TESTS COPLETED
-  def extractFiles(self):
+  def extractFileNames(self):
     actualPATH = os.getcwd()
     os.chdir(self.PATH)
 
@@ -132,7 +139,7 @@ class MWESystem:
       if './.' not in path and len(path) > 1:
         files_path = os.listdir(os.getcwd()+path[1:])
         for file_xml in files_path:
-          self.files_dataset.append('%s/%s' % (path[2:],file_xml))
+          self.files_path.append('%s/%s' % (path[2:],file_xml))
     os.chdir(actualPATH)
 
   # def parseData(self):
@@ -255,45 +262,45 @@ class MWESystem:
   #TOKENS[Label] = {word1: 3, Word2>5}
   def getWindows(self,tokens,mapSentence,file_xml_name,length=10):
     expressions = set()
-    #print file_xml_name
-    folder1, folder2,file_xml = file_xml_name.split('/')[-3],file_xml_name.split('/')[-2],file_xml_name.split('/')[-1].split('.')[0]
     
-    xml_data = parseSentence(file_xml_name)
+    # folder1, folder2,file_xml = file_xml_name.split('/')[-3],file_xml_name.split('/')[-2],file_xml_name.split('/')[-1].split('.')[0]
     
-    if xml_data == None:
-      return None
-    #print 'Running.....'
-    if (folder1 not in mapSentence) or (folder2 not in mapSentence[folder1]) or (file_xml not in mapSentence[folder1][folder2]):
-      return set()
-    sentences_mwe = mapSentence[folder1][folder2][file_xml]
-    #print 'running'
-    for number, data in sentences_mwe.iteritems():
-      expressions.add(data[0])
-      expA,expB = data[0].split('_')[0],data[0].split('_')[1]
-      label = data[1]
-      if label not in 'LI':
-        continue
+    # xml_data = parseSentence(file_xml_name)
+    
+    # if xml_data == None:
+    #   return None
+    # #print 'Running.....'
+    # if (folder1 not in mapSentence) or (folder2 not in mapSentence[folder1]) or (file_xml not in mapSentence[folder1][folder2]):
+    #   return set()
+    # sentences_mwe = mapSentence[folder1][folder2][file_xml]
+    # #print 'running'
+    # for number, data in sentences_mwe.iteritems():
+    #   expressions.add(data[0])
+    #   expA,expB = data[0].split('_')[0],data[0].split('_')[1]
+    #   label = data[1]
+    #   if label not in 'LI':
+    #     continue
 
-      left_windows_sentence,right_windows_sentence = getOneWindow(expA,expB,xml_data,number,length)
-      if left_windows_sentence == -1:
-          print 'problem with sentence %d not find within file %s' % (number,file_xml_name)
-          continue
-      # tokens = tokens.union(set(right_windows_sentence))
-      # tokens = tokens.union(set(left_windows_sentence))
-      # tokens.add(data[0])
+    #   left_windows_sentence,right_windows_sentence = getOneWindow(expA,expB,xml_data,number,length)
+    #   if left_windows_sentence == -1:
+    #       print 'problem with sentence %d not find within file %s' % (number,file_xml_name)
+    #       continue
+    #   # tokens = tokens.union(set(right_windows_sentence))
+    #   # tokens = tokens.union(set(left_windows_sentence))
+    #   # tokens.add(data[0])
 
-      if data[0] not in windows:
-        windows[data[0]] = []
-      window_sentence = left_windows_sentence
-      window_sentence.extend(right_windows_sentence)
+    #   if data[0] not in windows:
+    #     windows[data[0]] = []
+    #   window_sentence = left_windows_sentence
+    #   window_sentence.extend(right_windows_sentence)
 
-      windows[data[0]].append((label,window_sentence))
-      for ws in window_sentence:
-        if ws not in tokens[label]:
-          tokens[label][ws] = 0
-        tokens[label][ws] += 1
+    #   windows[data[0]].append((label,window_sentence))
+    #   for ws in window_sentence:
+    #     if ws not in tokens[label]:
+    #       tokens[label][ws] = 0
+    #     tokens[label][ws] += 1
 
-    return expressions
+    # return expressions
 
 
 # #MWE,[0,0,0],LABEL[0-literal,1-idiomatic]
@@ -458,14 +465,4 @@ class MWESystem:
 if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/A')
   c.setup()
-  xml_file = c.parseXMLfile(c.files_dataset[10])
-  
-  #print sentenca
-  #print c.parseTokensSentence(sentenca)
-  print c.getOneWindow("lose_temper",xml_file,235)
-  # #r = c.PATH
-  
-  # for r, dirs, files in os.walk("."):
-  #   print r
-
-  # 
+  print c.mwe_annotations['K']
