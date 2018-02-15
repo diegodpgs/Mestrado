@@ -292,9 +292,9 @@ class MWESystem:
 
             left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
 
-            self.tokens_mwe = tokens_mwe.union(set(right_windows_sentence))
-            self.tokens_mwe = tokens_mwe.union(set(left_windows_sentence))
-            self.tokens_mwe = tokens_mwe.union(set(__mwe_expression__.split('_')))
+            self.tokens_mwe = self.tokens_mwe.union(set(right_windows_sentence))
+            self.tokens_mwe = self.tokens_mwe.union(set(left_windows_sentence))
+            self.tokens_mwe = self.tokens_mwe.union(set(__mwe_expression__.split('_')))
 
             if __mwe_expression__ not in self.mwe_windows:
                 self.mwe_windows[__mwe_expression__] = []
@@ -335,7 +335,7 @@ class MWESystem:
               if ws not in tokens[target]:
                   tokens[target][ws] = 0
               tokens[target][ws] += 1
-       return tokens 
+      return tokens 
 
   def buildMatrix(self,data,__targets_labels__='IL'):
       """
@@ -355,7 +355,7 @@ class MWESystem:
       for d in data:
         target            = d[0]
         window_sentence   = d[2]
-        X.append([0 for i in xrange(len(self.tokens_mwe))]
+        X.append([0 for i in xrange(len(self.tokens_mwe))])
         Y.append(target)
 
         for ws in window_sentence:
@@ -364,143 +364,15 @@ class MWESystem:
         	else:
         		X[self.mapTokenXtoCol[ws]] += 1
 
-      return X,Y
+      return (X,Y)
       
-      
-
-
-# #proxima etapa, normalizar os dados para os vetores
-# def test(mapSentence,data_train,data_test):
-#   #[exp][L] = {word1:0, word2:1, word3:3}
-#   w_train,tokens = train(mapSentence,data_train)
-  
-#   TP = 0
-#   TN = 0
-#   FP = 0
-#   FN = 0
-
-#   for file_name in data_test:
-#     folder1, folder2,file_xml = file_name.split('/')[6],file_name.split('/')[7],file_name.split('/')[8].split('.')[0]
-    
-#     xml_data = parseSentence(file_xml_name)
-#     if xml_data == None:
-#       return None
-
-#     if (folder1 not in mapSentence) or (folder2 not in mapSentence[folder1]) or (file_xml not in mapSentence[folder1][folder2]):
-#       return set()
-
-#     sentences_mwe = mapSentence[folder1][folder2][file_xml]
-#     tokens = set()
-
-#     contagem = {'L':0,'I':0}
-    
-#     for number, data in sentences_mwe.iteritems():
-#       if data[0] not in w_train:
-#         continue
-
-#       expA,expB = data[0].split('_')[0],data[0].split('_')[1]
-#       label = data[1]
-
-#       left_windows_sentence,right_windows_sentence = getOneWindow(expA,expB,xml_data,number,length)
-#       tokens_test = left_windows_sentence
-#       tokens_test.extend(right_windows_sentence)
-#       tokens_test = list(set(tokens_test))
-#       for t in tokens_test:
-#         if t in w_train[data[0]]['L']:
-#           contagem['L'] += w_train[data[0]]['L'][t]
-
-#         if t in w_train[data[0]]['I']:
-#           contagem['I'] += w_train[data[0]]['I'][t]
-
-
-# def testSVM(svm_,X_test,Y_test):
-#   TP = 0.0
-#   TN = 0.0
-#   FP = 0.0
-#   FN = 0.0
-#   svmr = {1:0,0:0,-1:0}
-#   for indice in xrange(len(X_test)):
-#     result = list(svm_.predict([X_test[indice]]))
-#     print result
-#     #svmr[result] += 1
-#     if result == Y_test[indice]:
-#       if result == 0:
-#         TN += 1
-#       else:
-#         TP += 1
-#     else:
-#       if result == 0:
-#         FN += 1
-#       else:
-#         FP += 1
-#   precision = 0
-#   recall = 0
-#   F1 = 0
-#   print TP,FP,TN,FN
-#   if TP+FP != 0:
-#     precision = TP/(TP+FP)
-#   accuracy  = (TP+TN)/(TP+TN+FP+FN)
-#   print svmr
-#   if TP+FN != 0:
-#     recall    = TP/(TP+FN)
-#   if recall+precision != 0:
-#     F1 = (2*(recall*precision))/(recall+precision)
-#   return precision,accuracy,recall,F1
-
-
-# cookparsed = parseCookMWE()
-# mapSentence = mapToSentence(cookparsed)
-# files = getFiles('Texts')
-# W,Tokens = getData(mapSentence,files)
-# logr = open('logresults.log','w')
-# logr.write('P;A;R;F1;SAMPLES;EXP;ERROR\n')
-# sucesso = 0
-# fail = 0
-# print len(W.keys())
-# for exp, data in W.iteritems():
-#   X,Y =  normalizeVectors(W,Tokens,exp)
-#   print 'normalizeVectors computed for the expression',exp
-#   if X == None:
-#     print X 
-#     continue
-#   X = StandardScaler().fit_transform(X)
-#   pca = PCA(n_components=200)
-#   principalComponents = pca.fit_transform(X)
-#   X_train = np.array(principalComponents)
-#   X_train,X_test = X_train[0:int(len(X_train)*.75)],X_train[int(len(X_train)*.75):]
-#   Y_train,Y_test = Y[0:int(len(Y)*.75)],Y[int(len(Y)*.75):]
-#   Y_test = np.array(Y_test)
-#   clf = svm.SVC()
-#   try:
-#     clf.fit(X_train,Y_train)
-#     P,A,R,F1 = testSVM(clf,X_test,Y_test)
-#     logr.write('%.4f;%.4f;%.4f;%.4f;%d;%s;%s\n' % (P,A,R,F1,len(Y_test),exp,'NO ERROR'))
-#     sucesso += 1
-
-#   except ValueError:
-#     logr.write('-1;-1;-1;-1;%d;%s;%s\n' % (len(Y_test),exp,'The number of classes has to be greater than one'))
-#     print 'A expressao %s nao foi executada pelo SVM devido ao tamanho = %d' % (exp,len(Y_test))
-#     fail += 1
-#   except KeyError:
-#     logr.write('-1;-1;-1;-1;%d;%s;KeyError\n' % (len(Y_test),exp))
-#     print 'algum problema de chave ocorreu'
-#     fail += 1
-#   except TypeError:
-#     logr.write('-1;-1;-1;-1;%d;%s;TypeError\n' % (len(Y_test),exp))
-#     print 'algum problema de tipo ocorreu'
-#     fail += 1
-#   except:
-#     logr.write('-1;-1;-1;-1;%d;%s;NO IDEA\n' % (len(Y_test),exp))
-#     print 'Outro erro nao explicado'
-#     fail += 1
-
-# print '%d/%d %.3f' % (sucesso,fail,float(sucesso)/(fail+sucesso))
 
 
 if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
   c.setup()
-  train,test = c.splitDataByExpression('blow_smoke')
+  train_data,test_data = c.splitDataByExpression('blow_smoke')
+
 
 
 
