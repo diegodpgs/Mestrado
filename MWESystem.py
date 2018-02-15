@@ -50,7 +50,7 @@ class MWESystem:
     all_tokens = list(self.tokens_mwe)
     all_tokens.sort()
 
-    self.mapTokenXtoCol = [(all_tokens[i],i) for i in xrange(len(self.tokens_mwe))]
+    self.mapTokenXtoCol = dict([(all_tokens[i],i) for i in xrange(len(self.tokens_mwe))])
 
   def isValidSentence(self,sentence,token=' '):
     if len(sentence) < 30 or token not in sentence:
@@ -261,7 +261,7 @@ class MWESystem:
        TODO: Optimize this
      """
      for file_path in self.files_path:
-        print 'processing...',file_path
+        #print 'processing...',file_path
         __folders__   = file_path.split('/')[0:-1]
         __datamwe__   = None
         __file_name__ = file_path.split('/')[-1].split('.')[0]
@@ -304,21 +304,23 @@ class MWESystem:
 
             self.mwe_windows[__mwe_expression__].append((__target__,__sentence_location__,window_sentence,file_path))
 
-  def splitDataByExpression(self,expression,dev=75,test=25):
+  def splitData(self,dev=75,test=25):
       test_data = []
       dev_data  = []
 
-      for data in self.mwe_windows[expression]:
-          data = list(data)
-          data.append(expression)
+      for exp, datamwe in self.mwe_windows.iteritems():
 
-          sort = random.randint(1,100)
-          if sort <= dev:
-              dev_data.append(data)
-          else:
-              test_data.append(data)
+	      for data in datamwe:
+	          data = list(data)
+	          data.append(exp)
 
-      return (test_data,dev_data)
+	          sort = random.randint(1,100)
+	          if sort <= dev:
+	              dev_data.append(data)
+	          else:
+	              test_data.append(data)
+
+      return (dev_data,test_data)
 
 
   def getTokensFrequency(self,data,__targets_labels__):
@@ -332,10 +334,10 @@ class MWESystem:
               continue
 
           for ws in window_sentence:
-              if ws not in tokens[target]:
-                  tokens[target][ws] = 0
-              tokens[target][ws] += 1
-      return tokens 
+              if ws not in tokens_frequency[target]:
+                  tokens_frequency[target][ws] = 0
+              tokens_frequency[target][ws] += 1
+      return tokens_frequency 
 
   def buildMatrix(self,data,__targets_labels__='IL'):
       """
@@ -350,7 +352,7 @@ class MWESystem:
       X = []
       Y = []
 
-      tokens_frequency = self.getTokensFrequency(data_dev,__targets_labels__)
+      tokens_frequency = self.getTokensFrequency(data,__targets_labels__)
 
       for d in data:
         target            = d[0]
@@ -360,19 +362,17 @@ class MWESystem:
 
         for ws in window_sentence:
         	if ws in tokens_frequency[target]:
-        		X[self.mapTokenXtoCol[ws]] = tokens_frequency[target][ws]
+        		X[-1][self.mapTokenXtoCol[ws]] = tokens_frequency[target][ws]
         	else:
-        		X[self.mapTokenXtoCol[ws]] += 1
+        		X[-1][self.mapTokenXtoCol[ws]] += 1
 
       return (X,Y)
       
 
 
 if "__main__":
-  c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
+  c = MWESystem('cook_mwe.txt',os.getcwd()+'/dados')
   c.setup()
-  train_data,test_data = c.splitDataByExpression('blow_smoke')
-
-
-
-
+  train_data,test_data = c.splitData()
+  x_train,y_train = c.buildMatrix(train_data)
+  
