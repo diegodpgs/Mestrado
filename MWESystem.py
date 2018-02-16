@@ -375,33 +375,32 @@ class MWESystem:
   
 
   def RD_PCA(self,data,components=10):
-	X = np.array(data)
-	pca = PCA(n_components=components)
-	pca.fit(X)
+    X = np.array(data)
+    pca = PCA(n_components=components)
+    pca.fit(X)
+    X = pca.transform(X)
 
-	return list(X)
+    return list(X)
 
   def RD_SVD(self,data,components=10):
     svd = TruncatedSVD(components)#, n_iter=7, random_state=42)
-    svd.fit(data)  
-
-    return data
+    return svd.fit_transform(data)  
 
   def testSVM(self,dev,test):
-      clf = svm.SVC()
+      clf = svm.SVC(kernel='linear', C = 1.0)
       clf.fit(dev['X'], dev['Y'])  
       resultSVM = {1:0,0:0}
       TP = 0.0
       TN = 0.0
       FP = 0.0
       FN = 0.0
-
+      svmpredicted = []
       for i in xrange(len(test['X'])):
           result = clf.predict([test['X'][i]])
           predicted = result[0]
           target = test['Y'][i]
           resultSVM[predicted] += 1
-
+          svmpredicted.append(predicted)
           if target == 1:
               if predicted == target:
                   TP += 1
@@ -428,6 +427,7 @@ class MWESystem:
         F1 = (2*(recall*precision))/(recall+precision)
 
       print 'result SVM:',resultSVM
+      print svmpredicted
       print precision,accuracy,recall,F1
           
 
@@ -443,21 +443,45 @@ if "__main__":
   all_data.extend(test_data)
   all_data_x,all_data_y = c.buildMatrix(all_data)
 
-  for components in xrange(5, 100, 5):
-  	  print 'trainning %d compoments with SVD' % components
-	  all_data = c.RD_SVD(all_data_x,components)
-	  x_train,x_test = all_data[0:int(len(all_data)*.75)],all_data[int(len(all_data)*.75):]
-	  y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
-	 
-	  # x_train,y_train = c.buildMatrix(train_data)
-	  # x_test,y_test = c.buildMatrix(test_data)
-	  print len(x_train),len(y_train)
-	  print len(x_test),len(y_test)
-	  c.testSVM({'X':x_train,'Y':y_train},{'X':x_test,'Y':y_test})
-
-
-
-
-
-
   
+  
+  #for comp in xrange(5,200,5):
+  # print 'training...',comp
+  all_data_ = c.RD_SVD(all_data_x,100)
+  # print len(all_data[0])
+  #print all_data_[0]
+  x_train,x_test = all_data_[0:int(len(all_data_)*.75)],all_data_[int(len(all_data_)*.75):]
+  y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
+  c.testSVM({'X':x_train,'Y':y_train},{'X':x_test,'Y':y_test})
+
+
+  xdev = open('X.dev','w')
+  ydev = open('Y.dev','w')
+  xtest = open('X.test','w')
+  ytest = open('Y.test','w')
+
+  for i in x_train:
+      i = [str(j) for j in i]
+      xdev.write(",".join(i)+'\n')
+
+  for i in y_train:
+      ydev.write('%s\n' % (str(i)))
+
+  for i in x_test:
+      i = [str(j) for j in i]
+      xtest.write(",".join(i)+'\n')
+
+  for i in y_test:
+      ytest.write('%s\n' % (str(i)))
+ 
+  # # x_train,y_train = c.buildMatrix(train_data)
+  # # x_test,y_test = c.buildMatrix(test_data)
+  # print len(x_train),len(y_train)
+  # print len(x_test),len(y_test)
+  
+
+
+
+
+
+
