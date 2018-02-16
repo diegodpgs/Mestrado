@@ -42,6 +42,7 @@ class MWESystem:
     self.tokens_mwe = set()
     self.mwe_windows = {} #[expression] = [(__target__,__sentence_location__,window_sentence,file_path])...]
     self.mapTokenXtoCol = None
+    self.conta = 0
 
 
   def setup(self):
@@ -234,9 +235,9 @@ class MWESystem:
         raise Exception('the MWE %s does is not within the data Line::%d' % (expression,getframeinfo(currentframe()).lineno))
       
       left_windows_sentence = sentence_parsed[0:sentence_parsed.index(wordLeft)]
-      left_windows_sentence = left_windows_sentence[max(0,len(left_windows_sentence)-10):len(left_windows_sentence)]
+      left_windows_sentence = left_windows_sentence[max(0,len(left_windows_sentence)-length):len(left_windows_sentence)]
       right_windows_sentence = sentence_parsed[sentence_parsed.index(wordRight)+1:]
-      right_windows_sentence = right_windows_sentence[0:min(len(right_windows_sentence),10)]
+      right_windows_sentence = right_windows_sentence[0:min(len(right_windows_sentence),length)]
       index = 0
 
       if len(left_windows_sentence) < length and sentence_location-1 in dataToken:
@@ -276,55 +277,65 @@ class MWESystem:
         #print file_path
         
         #navigate into folders
-	try:
-          while index_folder < len(__folders__):
-            annotations_mwe = annotations_mwe[__folders__[index_folder]]
-            index_folder += 1
+        try:
+           while index_folder < len(__folders__):
+               annotations_mwe = annotations_mwe[__folders__[index_folder]]
+               index_folder += 1
         except:
-	   print 'the folder %s was not annotated' % __folders__[index_folder]
-           pass 
-        
+              print 'the folder %s was not annotated' % __folders__[index_folder]
+              pass 
+           
         if __file_name__ not in annotations_mwe:
-          continue
+         continue
 
         if self.type_dataset == 'xml':
-          __datamwe__ = self.parseXMLfile(file_path)
+         __datamwe__ = self.parseXMLfile(file_path)
         else:
-          __datamwe__ = self.parseCSVfile()
+         __datamwe__ = self.parseCSVfile()
 
         for __sentence_location__, data in annotations_mwe[__file_name__].iteritems():
-            __mwe_expression__ = data[0]
-            __target__         = data[1]
-        
-            if __target__ not in 'LI':
-              continue
-            
-            try:
-               left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
-            except:
-                print 'Some problem with %s and %d' % (__mwe_expression__,__sentence_location__)
-                pass
-            self.tokens_mwe = self.tokens_mwe.union(set(right_windows_sentence))
-            self.tokens_mwe = self.tokens_mwe.union(set(left_windows_sentence))
-            self.tokens_mwe = self.tokens_mwe.union(set(__mwe_expression__.split('_')))
+           __mwe_expression__ = data[0]
+           __target__         = data[1]
+       
+           if __target__ not in 'LI':
+             continue
+           
+           try:
+              left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
+           except:
+               print 'Some problem with %s and %d' % (__mwe_expression__,__sentence_location__)
+               pass
+           self.tokens_mwe = self.tokens_mwe.union(set(right_windows_sentence))
+           self.tokens_mwe = self.tokens_mwe.union(set(left_windows_sentence))
+           self.tokens_mwe = self.tokens_mwe.union(set(__mwe_expression__.split('_')))
 
-            if __mwe_expression__ not in self.mwe_windows:
-                self.mwe_windows[__mwe_expression__] = []
+           if __mwe_expression__ not in self.mwe_windows:
+               self.mwe_windows[__mwe_expression__] = []
 
-            window_sentence = left_windows_sentence
-            window_sentence.extend(right_windows_sentence)
+           window_sentence = left_windows_sentence
+           window_sentence.extend(right_windows_sentence)
 
-            self.mwe_windows[__mwe_expression__].append((__target__,__sentence_location__,window_sentence,file_path))
+           self.mwe_windows[__mwe_expression__].append((__target__,__sentence_location__,window_sentence,file_path))
+           self.conta += 1
 
-  def splitData(self,dev=75,test=25):
+  def splitData(self,dev=70,test=30):
       test_data = []
       dev_data  = []
-
-      for exp, datamwe in self.mwe_windows.iteritems():
+      total = {'I':1,'L':1}
+      for exp, datamwe in self.mwe_windows.iteritems(): ##[expression] = [(__target__,__sentence_location__,window_sentence,file_path])...]
 
           for data in datamwe:
               data = list(data)
               data.append(exp)
+              relacao = total['I']/float(total['L'])
+
+              # if data[0] == 'I' and relacao > 1.1:
+              # 	continue
+
+              # elif data[0] == 'L' and relacao <= .9:
+              # 	continue
+
+              total[data[0]] += 1
 
               sort = random.randint(1,100)
               if sort <= dev:
@@ -365,7 +376,7 @@ class MWESystem:
       Y = []
 
       tokens_frequency = self.getTokensFrequency(data,__targets_labels__)
-
+      
       for d in data:
         target            = d[0]
         window_sentence   = d[2]
@@ -376,10 +387,7 @@ class MWESystem:
             Y.append(0)
 
         for ws in window_sentence:
-            if ws in tokens_frequency[target]:
-                X[-1][self.mapTokenXtoCol[ws]] += 1# tokens_frequency[target][ws]
-            else:
-                X[-1][self.mapTokenXtoCol[ws]] += 1
+            X[-1][self.mapTokenXtoCol[ws]] += 1
 
       return (X,Y)
   
@@ -397,7 +405,7 @@ class MWESystem:
     return svd.fit_transform(data)  
 
   def testSVM(self,dev,test):
-      clf = svm.SVC(kernel='linear', C = 1.0)
+      clf = svm.SVC(kernel='linear')
       clf.fit(dev['X'], dev['Y'])  
       resultSVM = {1:0,0:0}
       TP = 0.0
@@ -436,9 +444,12 @@ class MWESystem:
       if recall+precision != 0:
         F1 = (2*(recall*precision))/(recall+precision)
 
-      print 'result SVM:',resultSVM
-      print svmpredicted
-      print precision,accuracy,recall,F1
+      #print 'result SVM:',resultSVM
+      #for i in xrange(len(svmpredicted)):
+      #    print svmpredicted[i],test['Y'][i],svmpredicted[i]==test['Y'][i]
+      #print test['Y'].count(1),test['Y'].count(0)
+
+      return precision,accuracy,recall,F1
           
 
       
@@ -448,48 +459,56 @@ class MWESystem:
 if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
   c.setup()
-  train_data,test_data = c.splitData()
-  all_data = train_data
-  all_data.extend(test_data)
-  all_data_x,all_data_y = c.buildMatrix(all_data)
+  P,A,R,F1 = [],[],[],[]
+  for i in xrange(100):
+	  train_data,test_data = c.splitData()
+	  all_data = train_data
+	  all_data.extend(test_data)
+	  all_data_x,all_data_y = c.buildMatrix(all_data)
+	  #print c.conta,len(all_data)
+	  
+	  
+	  #for comp in xrange(5,200,5):
+	  # print 'training...',comp
+	  #all_data_x = c.RD_PCA(all_data_x,100)
+	  # print len(all_data[0])
+	  #print all_data_[0]
+	  x_train,x_test = all_data_x[0:int(len(all_data_x)*.75)],all_data_x[int(len(all_data_x)*.75):]
+	  y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
+	  r1,r2,r3,r4 = c.testSVM({'X':list(x_train),'Y':y_train},{'X':list(x_test),'Y':y_test})
+	  P.append(r1)
+	  A.append(r2)
+	  R.append(r3)
+	  F1.append(r4)
 
+
+
+
+	  xdev = open('X.dev','w')
+	  ydev = open('Y.dev','w')
+	  xtest = open('X.test','w')
+	  ytest = open('Y.test','w')
+
+	  for i in x_train:
+	      i = [str(j) for j in i]
+	      xdev.write(",".join(i)+'\n')
+
+	  for i in y_train:
+	      ydev.write('%s\n' % (str(i)))
+
+	  for i in x_test:
+	      i = [str(j) for j in i]
+	      xtest.write(",".join(i)+'\n')
+
+	  for i in y_test:
+	      ytest.write('%s\n' % (str(i)))
+	 
+	  # # x_train,y_train = c.buildMatrix(train_data)
+	  # # x_test,y_test = c.buildMatrix(test_data)
+	  # print len(x_train),len(y_train)
+	  # print len(x_test),len(y_test)
   
-  
-  #for comp in xrange(5,200,5):
-  # print 'training...',comp
-  all_data_ = c.RD_SVD(all_data_x,100)
-  # print len(all_data[0])
-  #print all_data_[0]
-  x_train,x_test = all_data_[0:int(len(all_data_)*.75)],all_data_[int(len(all_data_)*.75):]
-  y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
-  c.testSVM({'X':x_train,'Y':y_train},{'X':x_test,'Y':y_test})
-
-
-  xdev = open('X.dev','w')
-  ydev = open('Y.dev','w')
-  xtest = open('X.test','w')
-  ytest = open('Y.test','w')
-
-  for i in x_train:
-      i = [str(j) for j in i]
-      xdev.write(",".join(i)+'\n')
-
-  for i in y_train:
-      ydev.write('%s\n' % (str(i)))
-
-  for i in x_test:
-      i = [str(j) for j in i]
-      xtest.write(",".join(i)+'\n')
-
-  for i in y_test:
-      ytest.write('%s\n' % (str(i)))
- 
-  # # x_train,y_train = c.buildMatrix(train_data)
-  # # x_test,y_test = c.buildMatrix(test_data)
-  # print len(x_train),len(y_train)
-  # print len(x_test),len(y_test)
-  
-
+  print sum(P)/len(P),sum(A)/len(A),sum(R)/len(R),sum(F1)/len(F1)
 
 
 
