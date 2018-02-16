@@ -269,13 +269,20 @@ class MWESystem:
         __file_name__ = file_path.split('/')[-1].split('.')[0]
 
         index_folder = 1
-        annotations_mwe = self.mwe_annotations[__folders__[0]]
+        if __folders__[0] not in self.mwe_annotations:
+           continue
 
+        annotations_mwe = self.mwe_annotations[__folders__[0]]
+        #print file_path
         
         #navigate into folders
-        while index_folder < len(__folders__):
-          annotations_mwe = annotations_mwe[__folders__[index_folder]]
-          index_folder += 1
+	try:
+          while index_folder < len(__folders__):
+            annotations_mwe = annotations_mwe[__folders__[index_folder]]
+            index_folder += 1
+        except:
+	   print 'the folder %s was not annotated' % __folders__[index_folder]
+           pass 
         
         if __file_name__ not in annotations_mwe:
           continue
@@ -291,9 +298,12 @@ class MWESystem:
         
             if __target__ not in 'LI':
               continue
-
-            left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
-
+            
+            try:
+               left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
+            except:
+                print 'Some problem with %s and %d' % (__mwe_expression__,__sentence_location__)
+                pass
             self.tokens_mwe = self.tokens_mwe.union(set(right_windows_sentence))
             self.tokens_mwe = self.tokens_mwe.union(set(left_windows_sentence))
             self.tokens_mwe = self.tokens_mwe.union(set(__mwe_expression__.split('_')))
@@ -367,7 +377,7 @@ class MWESystem:
 
         for ws in window_sentence:
             if ws in tokens_frequency[target]:
-                X[-1][self.mapTokenXtoCol[ws]] = tokens_frequency[target][ws]
+                X[-1][self.mapTokenXtoCol[ws]] += 1# tokens_frequency[target][ws]
             else:
                 X[-1][self.mapTokenXtoCol[ws]] += 1
 
@@ -436,7 +446,7 @@ class MWESystem:
 
 
 if "__main__":
-  c = MWESystem('cook_mwe.txt',os.getcwd()+'/dados')
+  c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
   c.setup()
   train_data,test_data = c.splitData()
   all_data = train_data
