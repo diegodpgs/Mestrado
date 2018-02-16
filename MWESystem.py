@@ -8,6 +8,8 @@ from sklearn import svm
 import nltk
 import numpy as np
 from inspect import currentframe, getframeinfo
+from sklearn.decomposition import TruncatedSVD
+from sklearn.random_projection import sparse_random_matrix
 
 
 """
@@ -372,12 +374,18 @@ class MWESystem:
       return (X,Y)
   
 
-  def reductionDimensionality(self,data,components=10):
+  def RD_PCA(self,data,components=10):
 	X = np.array(data)
 	pca = PCA(n_components=components)
 	pca.fit(X)
 
 	return list(X)
+
+  def RD_SVD(self,data,components=10):
+    svd = TruncatedSVD(components)#, n_iter=7, random_state=42)
+    svd.fit(data)  
+
+    return data
 
   def testSVM(self,dev,test):
       clf = svm.SVC()
@@ -436,8 +444,8 @@ if "__main__":
   all_data_x,all_data_y = c.buildMatrix(all_data)
 
   for components in xrange(5, 100, 5):
-  	  print 'trainning %d compoments with pca' % components
-	  all_data = c.reductionDimensionality(all_data_x,components)
+  	  print 'trainning %d compoments with SVD' % components
+	  all_data = c.RD_SVD(all_data_x,components)
 	  x_train,x_test = all_data[0:int(len(all_data)*.75)],all_data[int(len(all_data)*.75):]
 	  y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
 	 
