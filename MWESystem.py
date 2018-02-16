@@ -372,6 +372,13 @@ class MWESystem:
       return (X,Y)
   
 
+  def reductionDimensionality(self,data,components=10):
+	X = np.array(data)
+	pca = PCA(n_components=components)
+	pca.fit(X)
+
+	return list(X)
+
   def testSVM(self,dev,test):
       clf = svm.SVC()
       clf.fit(dev['X'], dev['Y'])  
@@ -424,9 +431,21 @@ if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/dados')
   c.setup()
   train_data,test_data = c.splitData()
-  x_train,y_train = c.buildMatrix(train_data)
-  x_test,y_test = c.buildMatrix(test_data)
-  c.testSVM({'X':x_train,'Y':y_train},{'X':x_test,'Y':y_test})
+  all_data = train_data
+  all_data.extend(test_data)
+  all_data_x,all_data_y = c.buildMatrix(all_data)
+
+  for components in xrange(5, 100, 5):
+  	  print 'trainning %d compoments with pca' % components
+	  all_data = c.reductionDimensionality(all_data_x,components)
+	  x_train,x_test = all_data[0:int(len(all_data)*.75)],all_data[int(len(all_data)*.75):]
+	  y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
+	 
+	  # x_train,y_train = c.buildMatrix(train_data)
+	  # x_test,y_test = c.buildMatrix(test_data)
+	  print len(x_train),len(y_train)
+	  print len(x_test),len(y_test)
+	  c.testSVM({'X':x_train,'Y':y_train},{'X':x_test,'Y':y_test})
 
 
 
