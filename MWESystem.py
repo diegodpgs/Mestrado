@@ -319,29 +319,22 @@ class MWESystem:
            self.conta += 1
 
   def splitData(self,dev=70,test=30):
-      test_data = []
-      dev_data  = []
+      test_data = {}
+      dev_data  = {}
       total = {'I':1,'L':1}
       for exp, datamwe in self.mwe_windows.iteritems(): ##[expression] = [(__target__,__sentence_location__,window_sentence,file_path])...]
+          test_data[exp] = []
+          dev_data[exp] = []
 
           for data in datamwe:
               data = list(data)
               data.append(exp)
-              relacao = total['I']/float(total['L'])
-
-              # if data[0] == 'I' and relacao > 1.1:
-              # 	continue
-
-              # elif data[0] == 'L' and relacao <= .9:
-              # 	continue
-
-              total[data[0]] += 1
 
               sort = random.randint(1,100)
               if sort <= dev:
-                  dev_data.append(data)
+                  dev_data[exp].append(data)
               else:
-                  test_data.append(data)
+                  test_data[exp].append(data)
 
       return (dev_data,test_data)
 
@@ -434,7 +427,8 @@ class MWESystem:
       F1 = 0
 
       print 'TP=%.f FP=%.f TN=%.f FN=%f' % (TP,FP,TN,FN)
-      
+      print 'SVM RESULTS %s' % (str(resultSVM))      
+      print 'TARGET 0:%d 1:%d' % (test['Y'].count(0),test['Y'].count(1))
       if TP+FP != 0:
         precision = TP/(TP+FP)
       accuracy  = (TP+TN)/(TP+TN+FP+FN)
@@ -452,63 +446,51 @@ class MWESystem:
       return precision,accuracy,recall,F1
           
 
-      
-
-
-
 if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
   c.setup()
-  P,A,R,F1 = [],[],[],[]
-  for i in xrange(100):
-	  train_data,test_data = c.splitData()
-	  all_data = train_data
-	  all_data.extend(test_data)
-	  all_data_x,all_data_y = c.buildMatrix(all_data)
-	  #print c.conta,len(all_data)
+  train_data,test_data = c.splitData()
+  __runs__ = 10
+  for exp, d in train_data.iteritems():
+    tP,tA,tR,tF1 = 0,0,0,0
+    for kx in xrange(__runs__):        
+          all_data = d
+          all_data.extend(test_data[exp])
+          all_data_x,all_data_y = c.buildMatrix(all_data)
 	  
-	  
-	  #for comp in xrange(5,200,5):
-	  # print 'training...',comp
-	  #all_data_x = c.RD_PCA(all_data_x,100)
-	  # print len(all_data[0])
-	  #print all_data_[0]
-	  x_train,x_test = all_data_x[0:int(len(all_data_x)*.75)],all_data_x[int(len(all_data_x)*.75):]
+          x_train,x_test = all_data_x[0:int(len(all_data_x)*.75)],all_data_x[int(len(all_data_x)*.75):]
 	  y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
-	  r1,r2,r3,r4 = c.testSVM({'X':list(x_train),'Y':y_train},{'X':list(x_test),'Y':y_test})
-	  P.append(r1)
-	  A.append(r2)
-	  R.append(r3)
-	  F1.append(r4)
+	  P,A,R,F1 = c.testSVM({'X':list(x_train),'Y':y_train},{'X':list(x_test),'Y':y_test})
+	  tP += P
+          tA += A
+          tR += R
+          F1 += F1
+          print 'EXP:[%s]       P:%1.2f A:%1.2f R:%1.2f F1:%1.2f' % (exp,P,A,R,F1)
+	  #xdev = open('X.dev','w')
+	  #ydev = open('Y.dev','w')
+	  #xtest = open('X.test','w')
+	  #ytest = open('Y.test','w')
 
+	  #for i in x_train:
+	  #    i = [str(j) for j in i]
+	  #    xdev.write(",".join(i)+'\n')
 
+	  #for i in y_train:
+	  #    ydev.write('%s\n' % (str(i)))
 
+	  #for i in x_test:
+	  #    i = [str(j) for j in i]
+	  #    xtest.write(",".join(i)+'\n')
 
-	  xdev = open('X.dev','w')
-	  ydev = open('Y.dev','w')
-	  xtest = open('X.test','w')
-	  ytest = open('Y.test','w')
-
-	  for i in x_train:
-	      i = [str(j) for j in i]
-	      xdev.write(",".join(i)+'\n')
-
-	  for i in y_train:
-	      ydev.write('%s\n' % (str(i)))
-
-	  for i in x_test:
-	      i = [str(j) for j in i]
-	      xtest.write(",".join(i)+'\n')
-
-	  for i in y_test:
-	      ytest.write('%s\n' % (str(i)))
+	  #for i in y_test:
+	  #    ytest.write('%s\n' % (str(i)))
 	 
 	  # # x_train,y_train = c.buildMatrix(train_data)
 	  # # x_test,y_test = c.buildMatrix(test_data)
 	  # print len(x_train),len(y_train)
 	  # print len(x_test),len(y_test)
+    print 'EXP:[%s] P:%1.2f A:%1.2f R:%1.2f F1:%1.2f' % (exp,tP/__runs__,tA/__runs__,tR/__runs__,tF1/__runs__)     
   
-  print sum(P)/len(P),sum(A)/len(A),sum(R)/len(R),sum(F1)/len(F1)
 
 
 
