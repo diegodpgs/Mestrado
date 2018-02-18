@@ -43,7 +43,7 @@ class MWESystem:
     self.mwe_windows = {} #[expression] = [(__target__,__sentence_location__,window_sentence,file_path])...]
     self.mapTokenXtoCol = None
     self.conta = 0
-
+    self.stopwords = []
 
   def setup(self):
     self.parseMWEs()
@@ -308,7 +308,8 @@ class MWESystem:
            self.tokens_mwe = self.tokens_mwe.union(set(right_windows_sentence))
            self.tokens_mwe = self.tokens_mwe.union(set(left_windows_sentence))
            self.tokens_mwe = self.tokens_mwe.union(set(__mwe_expression__.split('_')))
-
+           self.stopwords.extend(right_windows_sentence)
+           self.stopwords.extend(left_windows_sentence)
            if __mwe_expression__ not in self.mwe_windows:
                self.mwe_windows[__mwe_expression__] = []
 
@@ -522,7 +523,8 @@ if "__main__":
       F1 = sum(r['F1'])-(r['F1'].count(-1)*-1)
       F1 = F1/(len(r['F1'])-r['F1'].count(-1))
       resultsW.write('%s;%1.3f;%1.3f;%1.4f;%1.2f\n' % (exp,P,A,R,F1))
-
+  f = nltk.FreqDist(c.stopwords)
+  print f
 
 
 
