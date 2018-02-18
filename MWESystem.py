@@ -385,7 +385,7 @@ class MWESystem:
       return (X,Y)
   
 
-  def RD_PCA(self,data,components=10):
+  def RD_PCA(self,data,components=30):
     X = np.array(data)
     pca = PCA(n_components=components)
     pca.fit(X)
@@ -397,9 +397,22 @@ class MWESystem:
     svd = TruncatedSVD(components)#, n_iter=7, random_state=42)
     return svd.fit_transform(data)  
 
+  def mutual(self,A,B):
+      TP = 0.0
+      o = 0
+      for i in xrange(len(A)):
+        if A[i] != 0:
+           o += 1
+ 
+	   if A[i] == B[i]:
+               TP += 1
+      return TP/o
+
   def testSVM(self,dev,test):
       clf = svm.SVC(kernel='linear')
       clf.fit(dev['X'], dev['Y'])  
+      print dev['Y']
+      print test['Y']
       resultSVM = {1:0,0:0}
       TP = 0.0
       TN = 0.0
@@ -407,7 +420,10 @@ class MWESystem:
       FN = 0.0
       svmpredicted = []
       for i in xrange(len(test['X'])):
+          test['X'][i] = list(test['X'][i])
+          dev['X'][i] = list(dev['X'][i])
           result = clf.predict([test['X'][i]])
+          #print 'count',dev['X'][i].count(1), test['X'][i].count(1),self.mutual(test['X'][i],dev['X'][i])
           predicted = result[0]
           target = test['Y'][i]
           resultSVM[predicted] += 1
@@ -450,23 +466,34 @@ if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
   c.setup()
   train_data,test_data = c.splitData()
-  __runs__ = 10
+  __runs__ = 1
+  resultsW = open('results.txt','w')
   for exp, d in train_data.iteritems():
     tP,tA,tR,tF1 = 0,0,0,0
+    P,A,R,F1 = 0,0,0,0
     for kx in xrange(__runs__):        
           all_data = d
           all_data.extend(test_data[exp])
           all_data_x,all_data_y = c.buildMatrix(all_data)
-	  
+          all_data_x = list(c.RD_PCA(all_data_x))	  
+          
           x_train,x_test = all_data_x[0:int(len(all_data_x)*.75)],all_data_x[int(len(all_data_x)*.75):]
 	  y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
-	  P,A,R,F1 = c.testSVM({'X':list(x_train),'Y':y_train},{'X':list(x_test),'Y':y_test})
-	  tP += P
+	  print type(x_train),type(x_train[0])
+          try:
+            RSVM = c.testSVM({'X':list(x_train),'Y':y_train},{'X':list(x_test),'Y':y_test})
+            P,A,R,F1 = RSVM
+	  except:
+               resultsW.write('Is not possible to train SVM run(%d): %s' % (kx,exp))
+               tP,tA,tR,tF1 = -1,-1,-1,-1
+	       break
+          tP += P
           tA += A
           tR += R
-          F1 += F1
+          tF1 += F1
           print 'EXP:[%s]       P:%1.2f A:%1.2f R:%1.2f F1:%1.2f' % (exp,P,A,R,F1)
-	  #xdev = open('X.dev','w')
+          resultsW.write('EXP:[%s]       P:%1.2f A:%1.2f R:%1.2f F1:%1.2f\n' % (exp,P,A,R,F1))
+          #xdev = open('X.dev','w')
 	  #ydev = open('Y.dev','w')
 	  #xtest = open('X.test','w')
 	  #ytest = open('Y.test','w')
@@ -490,7 +517,7 @@ if "__main__":
 	  # print len(x_train),len(y_train)
 	  # print len(x_test),len(y_test)
     print 'EXP:[%s] P:%1.2f A:%1.2f R:%1.2f F1:%1.2f' % (exp,tP/__runs__,tA/__runs__,tR/__runs__,tF1/__runs__)     
-  
+    resultsW.write('EXP:[%s] P:%1.2f A:%1.2f R:%1.2f F1:%1.2f\n' % (exp,tP/__runs__,tA/__runs__,tR/__runs__,tF1/__runs__))
 
 
 
