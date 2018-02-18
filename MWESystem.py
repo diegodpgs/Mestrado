@@ -318,24 +318,35 @@ class MWESystem:
            self.mwe_windows[__mwe_expression__].append((__target__,__sentence_location__,window_sentence,file_path))
            self.conta += 1
 
-  def splitData(self,dev=70,test=30):
+  def splitData(self,dev=70,test=30,balance=.9,minimum_samples=20):
+      """
+        balance means that any target variable will not be higher than 90%
+      """
+
       test_data = {}
       dev_data  = {}
-      total = {'I':1,'L':1}
       for exp, datamwe in self.mwe_windows.iteritems(): ##[expression] = [(__target__,__sentence_location__,window_sentence,file_path])...]
           test_data[exp] = []
           dev_data[exp] = []
-
+          balanced = {'I':0.0,'L':0.0}
+          if len(datamwe) < minimum_samples:
+             continue
           for data in datamwe:
               data = list(data)
               data.append(exp)
+	      balanced[data[0]] += 1
 
               sort = random.randint(1,100)
               if sort <= dev:
                   dev_data[exp].append(data)
               else:
                   test_data[exp].append(data)
-
+          difference = abs(balanced['L']-balanced['I'])
+          if abs(difference)/(sum(balanced.values())) > balance:
+             test_data[exp] = []
+             dev_data[exp] = []
+             continue
+          
       return (dev_data,test_data)
 
 
@@ -465,13 +476,18 @@ class MWESystem:
 if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
   c.setup()
-  train_data,test_data = c.splitData()
-  __runs__ = 1
+  __runs__ = 10
   resultsW = open('results.txt','w')
-  for exp, d in train_data.iteritems():
-    tP,tA,tR,tF1 = 0,0,0,0
-    P,A,R,F1 = 0,0,0,0
-    for kx in xrange(__runs__):        
+  resultsData = {}
+  for kx in xrange(__runs__):   
+      train_data,test_data = c.splitData()
+      tP,tA,tR,tF1 = 0,0,0,0
+      P,A,R,F1 = -1,-1,-1,-1
+      for exp, d in train_data.iteritems():
+          if exp not in resultsData:
+             resultsData[exp] = {'P':[],'A':[],'R':[],'F1':[]}
+	  if len(d) == 0:
+             continue
           all_data = d
           all_data.extend(test_data[exp])
           all_data_x,all_data_y = c.buildMatrix(all_data)
@@ -483,41 +499,29 @@ if "__main__":
           try:
             RSVM = c.testSVM({'X':list(x_train),'Y':y_train},{'X':list(x_test),'Y':y_test})
             P,A,R,F1 = RSVM
-	  except:
-               resultsW.write('Is not possible to train SVM run(%d): %s' % (kx,exp))
-               tP,tA,tR,tF1 = -1,-1,-1,-1
-	       break
-          tP += P
-          tA += A
-          tR += R
-          tF1 += F1
-          print 'EXP:[%s]       P:%1.2f A:%1.2f R:%1.2f F1:%1.2f' % (exp,P,A,R,F1)
-          resultsW.write('EXP:[%s]       P:%1.2f A:%1.2f R:%1.2f F1:%1.2f\n' % (exp,P,A,R,F1))
-          #xdev = open('X.dev','w')
-	  #ydev = open('Y.dev','w')
-	  #xtest = open('X.test','w')
-	  #ytest = open('Y.test','w')
-
-	  #for i in x_train:
-	  #    i = [str(j) for j in i]
-	  #    xdev.write(",".join(i)+'\n')
-
-	  #for i in y_train:
-	  #    ydev.write('%s\n' % (str(i)))
-
-	  #for i in x_test:
-	  #    i = [str(j) for j in i]
-	  #    xtest.write(",".join(i)+'\n')
-
-	  #for i in y_test:
-	  #    ytest.write('%s\n' % (str(i)))
-	 
-	  # # x_train,y_train = c.buildMatrix(train_data)
-	  # # x_test,y_test = c.buildMatrix(test_data)
-	  # print len(x_train),len(y_train)
-	  # print len(x_test),len(y_test)
-    print 'EXP:[%s] P:%1.2f A:%1.2f R:%1.2f F1:%1.2f' % (exp,tP/__runs__,tA/__runs__,tR/__runs__,tF1/__runs__)     
-    resultsW.write('EXP:[%s] P:%1.2f A:%1.2f R:%1.2f F1:%1.2f\n' % (exp,tP/__runs__,tA/__runs__,tR/__runs__,tF1/__runs__))
+            resultsData[exp]['P'].append(P)
+            resultsData[exp]['A'].append(A)
+	    resultsData[exp]['R'].append(R)
+            resultsData[exp]['F1'].append(F1)
+            print 'EXP:[%s]       P:%1.2f A:%1.2f R:%1.2f F1:%1.2f' % (exp,P,A,R,F1)
+          except:
+	    resultsData[exp]['P'].append(-1)
+            resultsData[exp]['A'].append(-1)
+            resultsData[exp]['R'].append(-1)
+            resultsData[exp]['F1'].append(-1)
+            
+  for exp, r in resultsData.iteritems():
+      if r['P'] == []:
+        continue 
+      P = sum(r['P'])-(r['P'].count(-1)*-1)
+      P = P/(len(r['P'])-r['P'].count(-1))
+      A = sum(r['A'])-(r['A'].count(-1)*-1)
+      A = A/(len(r['A'])-r['A'].count(-1))
+      R = sum(r['R'])-(r['R'].count(-1)*-1)
+      R = R/(len(r['R'])-r['R'].count(-1))
+      F1 = sum(r['F1'])-(r['F1'].count(-1)*-1)
+      F1 = F1/(len(r['F1'])-r['F1'].count(-1))
+      resultsW.write('%s;%1.3f;%1.3f;%1.4f;%1.2f\n' % (exp,P,A,R,F1))
 
 
 
