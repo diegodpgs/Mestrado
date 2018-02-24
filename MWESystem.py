@@ -523,7 +523,7 @@ class MWESystem:
           
 
 if "__main__":
-  c = MWESystem('cook_mwe.txt',os.getcwd()+'/dados')
+  c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
   c.setup()
   __runs__ = 10
   resultsW = open('results.txt','w')
