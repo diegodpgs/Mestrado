@@ -234,7 +234,7 @@ class MWESystem:
                 index += 1
       return vec
 
-  def getOneWindow(self,expression,dataToken, sentence_location,length=10,sp=True):
+  def getOneWindow(self,expression,dataToken, sentence_location,length=10,removeStopWords=True):
       """
         dataToken  = [sentence_number] = sentence
       """
@@ -242,50 +242,42 @@ class MWESystem:
       wordLeft,wordRight = expression.split('_')[0],expression.split('_')[1]
 
       if sentence_location not in dataToken:
-           raise Exception('A sentenca de numero %d no arquivo Line::%d' % (sentence_location,getframeinfo(currentframe()).lineno))
+           print 'A sentenca de numero %d no arquivo Line::%d' % (sentence_location,getframeinfo(currentframe()).lineno)
+           return -1
 
       sentence_parsed = self.parseTokensSentence(dataToken[sentence_location])
 
-
       if wordLeft not in sentence_parsed or wordRight not in sentence_parsed:
-        raise Exception('the MWE %s does is not within the data Line::%d' % (expression,getframeinfo(currentframe()).lineno))
+        print 'the MWE %s does is not within the data Line::%d' % (expression,getframeinfo(currentframe()).lineno)
+        return -1
       
       left_windows_sentence  = sentence_parsed[0:sentence_parsed.index(wordLeft)]
-      left_windows_sentence  = left_windows_sentence[max(0,len(left_windows_sentence)-length):len(left_windows_sentence)]
-      if sp:
-         left_windows_sentence = self.removeStopWords(left_windows_sentence)
+      left_windows_sentence  = left_windows_sentence[max(0,len(left_windows_sentence)-length):len(left_windows_sentence)]      
       right_windows_sentence = sentence_parsed[sentence_parsed.index(wordRight)+1:]
       right_windows_sentence = right_windows_sentence[0:min(len(right_windows_sentence),length)]
-      if sp:
-         right_windows_sentence = self.removeStopWords(right_windows_sentence)
-      index = 0
-
+      
       if len(left_windows_sentence) < length and sentence_location-1 in dataToken:
-        previous_sentence = self.parseTokensSentence(dataToken[sentence_location-1])
-        previous_sentence = previous_sentence[::-1]
-        #__analisadas.append(sentence_location-1)
-        index = 0
-        while len(left_windows_sentence) < length and index < len(previous_sentence):
-          left_windows_sentence.insert(0,previous_sentence[index])
-          if sp and left_windows_sentence[-1] in self.stopwords:
-             continue
-                
-          index += 1
-        if len(left_windows_sentence) < length:
-           print 'PROBLEM',expression,sentence_location,len(left_windows_sentence)
-           a =  self.__findSenteceMWE(expression,sentence_location)
+        actual_sentence = sentence_location-1
+
+        while len(left_windows_sentence) < length and actual_sentence >= 0:
+          previous_sentence = self.parseTokensSentence(dataToken[actual_sentence])
+          previous_sentence = previous_sentence[::-1]
+          index = 0
+          while len(left_windows_sentence) < length and index < len(previous_sentence):
+            left_windows_sentence.insert(0,previous_sentence[index])
+            index += 1
+          actual_sentence -= 1
+
       if len(right_windows_sentence) < length and sentence_location+1 in dataToken:
-
-        next_sentence = self.parseTokensSentence(dataToken[sentence_location+1])
-        index = 0
-        while len(right_windows_sentence) < length and index < len(next_sentence):
-          right_windows_sentence.append(next_sentence[index])
-          if sp and right_windows_sentence[-1] in self.stopwords:
-             continue
-          index += 1
-        if len(right_windows_sentence) < length:
-           print 'PROBLEM',expression,sentence_location,len(right_windows_sentence)
-
+        actual_sentence = sentence_location+1
+        while len(right_windows_sentence) < length and actual_sentence < len(dataToken):
+          next_sentence = self.parseTokensSentence(dataToken[sentence_location+1])
+          index = 0
+          while len(right_windows_sentence) < length and index < len(next_sentence):
+            right_windows_sentence.append(next_sentence[index])
+            index += 1
+          actual_sentence += 1
+      
       return (left_windows_sentence,right_windows_sentence)
 
   def parseData(self):
@@ -330,11 +322,12 @@ class MWESystem:
            if __target__ not in 'LI':
              continue
            
-           try:
-             left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
-           except:
-               print 'Some problem with %s and %d' % (__mwe_expression__,__sentence_location__)
-               continue
+           print file_path,
+           #try:
+           left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
+           #except:
+           #    print 'Some problem with %s and %d' % (__mwe_expression__,__sentence_location__)
+           #    continue
            self.tokens_mwe = self.tokens_mwe.union(set(right_windows_sentence))
            self.tokens_mwe = self.tokens_mwe.union(set(left_windows_sentence))
            self.tokens_mwe = self.tokens_mwe.union(set(__mwe_expression__.split('_')))
@@ -365,7 +358,7 @@ class MWESystem:
           for data in datamwe:
               data = list(data)
               data.append(exp)
-	      balanced[data[0]] += 1
+              balanced[data[0]] += 1
 
               sort = random.randint(1,100)
               if sort <= dev:
@@ -505,7 +498,7 @@ class MWESystem:
           
 
 if "__main__":
-  c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
+  c = MWESystem('cook_mwe.txt',os.getcwd()+'/dados')
   c.setup()
   __runs__ = 10
   resultsW = open('results.txt','w')
@@ -517,7 +510,7 @@ if "__main__":
       for exp, d in train_data.iteritems():
           if exp not in resultsData:
              resultsData[exp] = {'P':[],'A':[],'R':[],'F1':[]}
-	  if len(d) == 0:
+          if len(d) == 0:
              continue
           all_data = d
           all_data.extend(test_data[exp])
@@ -525,18 +518,18 @@ if "__main__":
           all_data_x = list(c.RD_PCA(all_data_x))	  
           
           x_train,x_test = all_data_x[0:int(len(all_data_x)*.75)],all_data_x[int(len(all_data_x)*.75):]
-	  y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
-	  print type(x_train),type(x_train[0])
+          y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
+          
           try:
             RSVM = c.testSVM({'X':list(x_train),'Y':y_train},{'X':list(x_test),'Y':y_test})
             P,A,R,F1 = RSVM
             resultsData[exp]['P'].append(P)
             resultsData[exp]['A'].append(A)
-	    resultsData[exp]['R'].append(R)
+            resultsData[exp]['R'].append(R)
             resultsData[exp]['F1'].append(F1)
             print 'EXP:[%s]       P:%1.2f A:%1.2f R:%1.2f F1:%1.2f' % (exp,P,A,R,F1)
           except:
-	    resultsData[exp]['P'].append(-1)
+            resultsData[exp]['P'].append(-1)
             resultsData[exp]['A'].append(-1)
             resultsData[exp]['R'].append(-1)
             resultsData[exp]['F1'].append(-1)
