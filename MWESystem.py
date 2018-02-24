@@ -23,8 +23,9 @@ from sklearn.random_projection import sparse_random_matrix
 
   Code Convetions:
 
-  __constantName__:  local constant
-  CONSTANT        :  global constant
+  __constantName__  :  local constant
+  CONSTANT          :  global constant
+  _R_thisisaregister:  register
 
 """
 
@@ -44,6 +45,8 @@ class MWESystem:
     self.mapTokenXtoCol = None
     self.conta = 0
     self.stopwords = open('nltk_stopwords.txt').read().split('\n')
+    self.log = open('log.log','w')
+    self._R_sentencenotfound = 0
 
   def __findSentenceMWE(self,expression,sentence):
       for i in xrange(len(self.mwe_windows[expression])):
@@ -55,11 +58,10 @@ class MWESystem:
     self.parseMWEs()
     self.extractFileNames()
     self.parseData()
-
     all_tokens = list(self.tokens_mwe)
     all_tokens.sort()
-
     self.mapTokenXtoCol = dict([(all_tokens[i],i) for i in xrange(len(self.tokens_mwe))])
+    self.log.write('%d sentences were not found\n' % self._R_sentencenotfound)
 
   def isValidSentence(self,sentence,token=' '):
     if len(sentence) < 8 or token not in sentence:
@@ -243,18 +245,27 @@ class MWESystem:
 
       if sentence_location not in dataToken:
            print 'A sentenca de numero %d no arquivo Line::%d' % (sentence_location,getframeinfo(currentframe()).lineno)
+           self.log.write('--------%s:sentence %d not located\n' % ('E'*10,sentence_location))
+           self._R_sentencenotfound += 1
            return -1
 
       sentence_parsed = self.parseTokensSentence(dataToken[sentence_location])
 
       if wordLeft not in sentence_parsed or wordRight not in sentence_parsed:
         print 'the MWE %s does is not within the data Line::%d' % (expression,getframeinfo(currentframe()).lineno)
+        self.log.write('--------%s Sentence %s not not located\n' % ('E'*10,expression))
         return -1
       
       left_windows_sentence  = sentence_parsed[0:sentence_parsed.index(wordLeft)]
       left_windows_sentence  = left_windows_sentence[max(0,len(left_windows_sentence)-length):len(left_windows_sentence)]      
       right_windows_sentence = sentence_parsed[sentence_parsed.index(wordRight)+1:]
       right_windows_sentence = right_windows_sentence[0:min(len(right_windows_sentence),length)]
+      ST = []
+      ST.append(sentence_location)
+
+      if removeStopWords:
+        left_windows_sentence  = self.removeStopWords(left_windows_sentence)
+        right_windows_sentence = self.removeStopWords(right_windows_sentence)
       
       if len(left_windows_sentence) < length and sentence_location-1 in dataToken:
         actual_sentence = sentence_location-1
@@ -266,9 +277,13 @@ class MWESystem:
           index = 0
           while len(left_windows_sentence) < length and index < len(previous_sentence):
             left_windows_sentence.insert(0,previous_sentence[index])
-            index += 1
-          actual_sentence -= 1
+            if removeStopWords and left_windows_sentence[-1] in self.stopwords:
+              left_windows_sentence.pop()
 
+            index += 1
+          ST.append(actual_sentence)
+          actual_sentence -= 1
+      self.log.write('%s;%02d;' % (expression,len(left_windows_sentence)))
       if len(right_windows_sentence) < length and sentence_location+1 in dataToken:
         actual_sentence = sentence_location+1
         while len(right_windows_sentence) < length and actual_sentence < len(dataToken):
@@ -276,9 +291,13 @@ class MWESystem:
           index = 0
           while len(right_windows_sentence) < length and index < len(next_sentence):
             right_windows_sentence.append(next_sentence[index])
+            if removeStopWords and right_windows_sentence[-1] in self.stopwords:
+              right_windows_sentence.pop()
             index += 1
+          ST.append(actual_sentence)
           actual_sentence += 1
-      
+      ST.sort()
+      self.log.write('%02d;%d\n' % (len(right_windows_sentence),ST[-1]-ST[0]))
       return (left_windows_sentence,right_windows_sentence)
 
   def parseData(self):
@@ -315,7 +334,7 @@ class MWESystem:
          __datamwe__ = self.parseXMLfile(file_path)
         else:
          __datamwe__ = self.parseCSVfile()
-
+        #self.log.write('----%s\n' % file_path)
         for __sentence_location__, data in annotations_mwe[__file_name__].iteritems():
            __mwe_expression__ = data[0]
            __target__         = data[1]
@@ -505,7 +524,7 @@ class MWESystem:
           
 
 if "__main__":
-  c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
+  c = MWESystem('cook_mwe.txt',os.getcwd()+'/dados')
   c.setup()
   __runs__ = 10
   resultsW = open('results.txt','w')
