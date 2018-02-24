@@ -234,7 +234,7 @@ class MWESystem:
                 index += 1
       return vec
 
-  def getOneWindow(self,expression,dataToken, sentence_location,length=10,removeStopWords=True):
+  def getOneWindow(self,expression,dataToken, sentence_location,length=30,removeStopWords=True):
       """
         dataToken  = [sentence_number] = sentence
       """
@@ -259,7 +259,8 @@ class MWESystem:
       if len(left_windows_sentence) < length and sentence_location-1 in dataToken:
         actual_sentence = sentence_location-1
 
-        while len(left_windows_sentence) < length and actual_sentence >= 0:
+        while len(left_windows_sentence) < length and actual_sentence > 0:
+          print actual_sentence,sentence_location,len(dataToken)
           previous_sentence = self.parseTokensSentence(dataToken[actual_sentence])
           previous_sentence = previous_sentence[::-1]
           index = 0
@@ -323,9 +324,15 @@ class MWESystem:
              continue
            
            print file_path,
-           #try:
-           left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
-           #except:
+           output = None
+           try:
+              output = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
+              if type(output) == int:
+                 continue
+           except:
+                print '*'*50
+                continue
+           left_windows_sentence,right_windows_sentence = output
            #    print 'Some problem with %s and %d' % (__mwe_expression__,__sentence_location__)
            #    continue
            self.tokens_mwe = self.tokens_mwe.union(set(right_windows_sentence))
@@ -498,7 +505,7 @@ class MWESystem:
           
 
 if "__main__":
-  c = MWESystem('cook_mwe.txt',os.getcwd()+'/dados')
+  c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
   c.setup()
   __runs__ = 10
   resultsW = open('results.txt','w')
