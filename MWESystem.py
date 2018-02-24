@@ -271,7 +271,6 @@ class MWESystem:
         actual_sentence = sentence_location-1
 
         while len(left_windows_sentence) < length and actual_sentence > 0:
-          print actual_sentence,sentence_location,len(dataToken)
           previous_sentence = self.parseTokensSentence(dataToken[actual_sentence])
           previous_sentence = previous_sentence[::-1]
           index = 0
@@ -342,7 +341,7 @@ class MWESystem:
            if __target__ not in 'LI':
              continue
            
-           print file_path,
+           
            output = None
            try:
               output = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
