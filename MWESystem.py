@@ -43,7 +43,13 @@ class MWESystem:
     self.mwe_windows = {} #[expression] = [(__target__,__sentence_location__,window_sentence,file_path])...]
     self.mapTokenXtoCol = None
     self.conta = 0
-    self.stopwords = []
+    self.stopwords = open('nltk_stopwords.txt').read().split('\n')
+
+  def __findSentenceMWE(self,expression,sentence):
+      for i in xrange(len(self.mwe_windows[expression])):
+         if self.mwe_windows[expression][i] == sentence:
+             return i
+      return -1
 
   def setup(self):
     self.parseMWEs()
@@ -56,7 +62,7 @@ class MWESystem:
     self.mapTokenXtoCol = dict([(all_tokens[i],i) for i in xrange(len(self.tokens_mwe))])
 
   def isValidSentence(self,sentence,token=' '):
-    if len(sentence) < 30 or token not in sentence:
+    if len(sentence) < 8 or token not in sentence:
       return False 
 
     else:
@@ -195,7 +201,9 @@ class MWESystem:
           #print "[[[%s]]]" % c
           tokens.append(c.split('hw="')[1].split('"')[0])
         else:
-          tokens.append(c.split('>')[1].split(' </w>')[0])
+          tokens.append(c.split('>')[1].split('</w>')[0])
+          if tokens[-1][-1] == ' ':
+            tokens[-1] = tokens[-1][0:-1]
 
 
     return tokens
@@ -217,12 +225,20 @@ class MWESystem:
 
     
     return xml_sentences
+  def removeStopWords(self,vec):
+      index = 0
+      while index < len(vec):
+            if vec[index] in self.stopwords:
+                 del vec[index]
+            else:
+                index += 1
+      return vec
 
-  def getOneWindow(self,expression,dataToken, sentence_location,length=10):
+  def getOneWindow(self,expression,dataToken, sentence_location,length=10,sp=True):
       """
         dataToken  = [sentence_number] = sentence
       """
-
+      #__analidadas = [sentence_location]
       wordLeft,wordRight = expression.split('_')[0],expression.split('_')[1]
 
       if sentence_location not in dataToken:
@@ -234,27 +250,41 @@ class MWESystem:
       if wordLeft not in sentence_parsed or wordRight not in sentence_parsed:
         raise Exception('the MWE %s does is not within the data Line::%d' % (expression,getframeinfo(currentframe()).lineno))
       
-      left_windows_sentence = sentence_parsed[0:sentence_parsed.index(wordLeft)]
-      left_windows_sentence = left_windows_sentence[max(0,len(left_windows_sentence)-length):len(left_windows_sentence)]
+      left_windows_sentence  = sentence_parsed[0:sentence_parsed.index(wordLeft)]
+      left_windows_sentence  = left_windows_sentence[max(0,len(left_windows_sentence)-length):len(left_windows_sentence)]
+      if sp:
+         left_windows_sentence = self.removeStopWords(left_windows_sentence)
       right_windows_sentence = sentence_parsed[sentence_parsed.index(wordRight)+1:]
       right_windows_sentence = right_windows_sentence[0:min(len(right_windows_sentence),length)]
+      if sp:
+         right_windows_sentence = self.removeStopWords(right_windows_sentence)
       index = 0
 
       if len(left_windows_sentence) < length and sentence_location-1 in dataToken:
         previous_sentence = self.parseTokensSentence(dataToken[sentence_location-1])
         previous_sentence = previous_sentence[::-1]
+        #__analisadas.append(sentence_location-1)
         index = 0
         while len(left_windows_sentence) < length and index < len(previous_sentence):
           left_windows_sentence.insert(0,previous_sentence[index])
+          if sp and left_windows_sentence[-1] in self.stopwords:
+             continue
+                
           index += 1
-
+        if len(left_windows_sentence) < length:
+           print 'PROBLEM',expression,sentence_location,len(left_windows_sentence)
+           a =  self.__findSenteceMWE(expression,sentence_location)
       if len(right_windows_sentence) < length and sentence_location+1 in dataToken:
 
         next_sentence = self.parseTokensSentence(dataToken[sentence_location+1])
         index = 0
         while len(right_windows_sentence) < length and index < len(next_sentence):
           right_windows_sentence.append(next_sentence[index])
+          if sp and right_windows_sentence[-1] in self.stopwords:
+             continue
           index += 1
+        if len(right_windows_sentence) < length:
+           print 'PROBLEM',expression,sentence_location,len(right_windows_sentence)
 
       return (left_windows_sentence,right_windows_sentence)
 
@@ -301,10 +331,10 @@ class MWESystem:
              continue
            
            try:
-              left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
+             left_windows_sentence,right_windows_sentence = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
            except:
                print 'Some problem with %s and %d' % (__mwe_expression__,__sentence_location__)
-               pass
+               continue
            self.tokens_mwe = self.tokens_mwe.union(set(right_windows_sentence))
            self.tokens_mwe = self.tokens_mwe.union(set(left_windows_sentence))
            self.tokens_mwe = self.tokens_mwe.union(set(__mwe_expression__.split('_')))
