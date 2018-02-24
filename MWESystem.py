@@ -236,7 +236,7 @@ class MWESystem:
                 index += 1
       return vec
 
-  def getOneWindow(self,expression,dataToken, sentence_location,length=30,removeStopWords=True):
+  def getOneWindow(self,expression,dataToken, sentence_location,length=10,removeStopWords=True):
       """
         dataToken  = [sentence_number] = sentence
       """
@@ -344,6 +344,7 @@ class MWESystem:
            
            output = None
            try:
+              self.log.write('%s;%d;' % (file_path,__sentence_location__))
               output = self.getOneWindow(__mwe_expression__,__datamwe__,__sentence_location__)
               if type(output) == int:
                  continue
@@ -464,7 +465,7 @@ class MWESystem:
         if A[i] != 0:
            o += 1
  
-	   if A[i] == B[i]:
+     if A[i] == B[i]:
                TP += 1
       return TP/o
 
@@ -540,7 +541,7 @@ if "__main__":
           all_data = d
           all_data.extend(test_data[exp])
           all_data_x,all_data_y = c.buildMatrix(all_data)
-          all_data_x = list(c.RD_PCA(all_data_x))	  
+          all_data_x = list(c.RD_PCA(all_data_x))   
           
           x_train,x_test = all_data_x[0:int(len(all_data_x)*.75)],all_data_x[int(len(all_data_x)*.75):]
           y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
