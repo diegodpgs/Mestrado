@@ -46,6 +46,7 @@ class MWESystem:
     self.conta = 0
     self.stopwords = open('nltk_stopwords.txt').read().split('\n')
     self.log = open('log.log','w')
+    self.palavras = []
     self._R_sentencenotfound = 0
 
   def __findSentenceMWE(self,expression,sentence):
@@ -262,6 +263,7 @@ class MWESystem:
       right_windows_sentence = right_windows_sentence[0:min(len(right_windows_sentence),length)]
       ST = []
       ST.append(sentence_location)
+      
 
       if removeStopWords:
         left_windows_sentence  = self.removeStopWords(left_windows_sentence)
@@ -277,7 +279,7 @@ class MWESystem:
           while len(left_windows_sentence) < length and index < len(previous_sentence):
             left_windows_sentence.insert(0,previous_sentence[index])
             if removeStopWords and left_windows_sentence[-1] in self.stopwords:
-              left_windows_sentence.pop()
+              self.palavras.append(left_windows_sentence.pop())
 
             index += 1
           ST.append(actual_sentence)
@@ -291,7 +293,7 @@ class MWESystem:
           while len(right_windows_sentence) < length and index < len(next_sentence):
             right_windows_sentence.append(next_sentence[index])
             if removeStopWords and right_windows_sentence[-1] in self.stopwords:
-              right_windows_sentence.pop()
+              self.palavras.append(right_windows_sentence.pop())
             index += 1
           ST.append(actual_sentence)
           actual_sentence += 1
@@ -526,6 +528,8 @@ class MWESystem:
 if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
   c.setup()
+  F = nltk.FreqDist(self.palavras)
+  print F.most_common(130)
   __runs__ = 10
   resultsW = open('results.txt','w')
   resultsData = {}
