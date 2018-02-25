@@ -286,7 +286,7 @@ class MWESystem:
       if len(right_windows_sentence) < length and sentence_location+1 in dataToken:
         actual_sentence = sentence_location+1
         while len(right_windows_sentence) < length and actual_sentence < len(dataToken):
-          next_sentence = self.parseTokensSentence(dataToken[sentence_location+1])
+          next_sentence = self.parseTokensSentence(dataToken[actual_sentence])
           index = 0
           while len(right_windows_sentence) < length and index < len(next_sentence):
             right_windows_sentence.append(next_sentence[index])
@@ -296,7 +296,7 @@ class MWESystem:
           ST.append(actual_sentence)
           actual_sentence += 1
       ST.sort()
-      self.log.write('%02d;%d\n' % (len(right_windows_sentence),ST[-1]-ST[0]))
+      self.log.write('%02d;%d;%d\n' % (len(right_windows_sentence),len(ST),ST[-1]-ST[0]))
       return (left_windows_sentence,right_windows_sentence)
 
   def parseData(self):
