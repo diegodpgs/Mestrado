@@ -465,7 +465,7 @@ class MWESystem:
         if A[i] != 0:
            o += 1
  
-     if A[i] == B[i]:
+      if A[i] == B[i]:
                TP += 1
       return TP/o
 
