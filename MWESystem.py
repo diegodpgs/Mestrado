@@ -359,8 +359,6 @@ class MWESystem:
            self.tokens_mwe = self.tokens_mwe.union(set(right_windows_sentence))
            self.tokens_mwe = self.tokens_mwe.union(set(left_windows_sentence))
            self.tokens_mwe = self.tokens_mwe.union(set(__mwe_expression__.split('_')))
-           self.stopwords.extend(right_windows_sentence)
-           self.stopwords.extend(left_windows_sentence)
            if __mwe_expression__ not in self.mwe_windows:
                self.mwe_windows[__mwe_expression__] = []
 
@@ -528,8 +526,6 @@ class MWESystem:
 if "__main__":
   c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
   c.setup()
-  F = nltk.FreqDist(self.palavras)
-  print F.most_common(130)
   __runs__ = 10
   resultsW = open('results.txt','w')
   resultsData = {}
@@ -563,7 +559,6 @@ if "__main__":
             resultsData[exp]['A'].append(-1)
             resultsData[exp]['R'].append(-1)
             resultsData[exp]['F1'].append(-1)
-            
   for exp, r in resultsData.iteritems():
       if r['P'] == []:
         continue 
@@ -576,9 +571,3 @@ if "__main__":
       F1 = sum(r['F1'])-(r['F1'].count(-1)*-1)
       F1 = F1/(len(r['F1'])-r['F1'].count(-1))
       resultsW.write('%s;%1.3f;%1.3f;%1.4f;%1.2f\n' % (exp,P,A,R,F1))
-  f = nltk.FreqDist(c.stopwords)
-  print f
-
-
-
-
