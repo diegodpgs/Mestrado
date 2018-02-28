@@ -523,51 +523,51 @@ class MWESystem:
       return precision,accuracy,recall,F1
           
 
-if "__main__":
-  c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
-  c.setup()
-  __runs__ = 10
-  resultsW = open('results.txt','w')
-  resultsData = {}
-  for kx in xrange(__runs__):   
-      train_data,test_data = c.splitData()
-      tP,tA,tR,tF1 = 0,0,0,0
-      P,A,R,F1 = -1,-1,-1,-1
-      for exp, d in train_data.iteritems():
-          if exp not in resultsData:
-             resultsData[exp] = {'P':[],'A':[],'R':[],'F1':[]}
-          if len(d) == 0:
-             continue
-          all_data = d
-          all_data.extend(test_data[exp])
-          all_data_x,all_data_y = c.buildMatrix(all_data)
-          all_data_x = list(c.RD_PCA(all_data_x))   
+# if "__main__":
+#   c = MWESystem('cook_mwe.txt',os.getcwd()+'/Texts')
+#   c.setup()
+#   __runs__ = 10
+#   resultsW = open('results.txt','w')
+#   resultsData = {}
+#   for kx in xrange(__runs__):   
+#       train_data,test_data = c.splitData()
+#       tP,tA,tR,tF1 = 0,0,0,0
+#       P,A,R,F1 = -1,-1,-1,-1
+#       for exp, d in train_data.iteritems():
+#           if exp not in resultsData:
+#              resultsData[exp] = {'P':[],'A':[],'R':[],'F1':[]}
+#           if len(d) == 0:
+#              continue
+#           all_data = d
+#           all_data.extend(test_data[exp])
+#           all_data_x,all_data_y = c.buildMatrix(all_data)
+#           all_data_x = list(c.RD_PCA(all_data_x))   
           
-          x_train,x_test = all_data_x[0:int(len(all_data_x)*.75)],all_data_x[int(len(all_data_x)*.75):]
-          y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
+#           x_train,x_test = all_data_x[0:int(len(all_data_x)*.75)],all_data_x[int(len(all_data_x)*.75):]
+#           y_train,y_test  = all_data_y[0:int(len(all_data_y)*.75)],all_data_y[int(len(all_data_y)*.75):]
           
-          try:
-            RSVM = c.testSVM({'X':list(x_train),'Y':y_train},{'X':list(x_test),'Y':y_test})
-            P,A,R,F1 = RSVM
-            resultsData[exp]['P'].append(P)
-            resultsData[exp]['A'].append(A)
-            resultsData[exp]['R'].append(R)
-            resultsData[exp]['F1'].append(F1)
-            print 'EXP:[%s]       P:%1.2f A:%1.2f R:%1.2f F1:%1.2f' % (exp,P,A,R,F1)
-          except:
-            resultsData[exp]['P'].append(-1)
-            resultsData[exp]['A'].append(-1)
-            resultsData[exp]['R'].append(-1)
-            resultsData[exp]['F1'].append(-1)
-  for exp, r in resultsData.iteritems():
-      if r['P'] == []:
-        continue 
-      P = sum(r['P'])-(r['P'].count(-1)*-1)
-      P = P/(len(r['P'])-r['P'].count(-1))
-      A = sum(r['A'])-(r['A'].count(-1)*-1)
-      A = A/(len(r['A'])-r['A'].count(-1))
-      R = sum(r['R'])-(r['R'].count(-1)*-1)
-      R = R/(len(r['R'])-r['R'].count(-1))
-      F1 = sum(r['F1'])-(r['F1'].count(-1)*-1)
-      F1 = F1/(len(r['F1'])-r['F1'].count(-1))
-      resultsW.write('%s;%1.3f;%1.3f;%1.4f;%1.2f\n' % (exp,P,A,R,F1))
+#           try:
+#             RSVM = c.testSVM({'X':list(x_train),'Y':y_train},{'X':list(x_test),'Y':y_test})
+#             P,A,R,F1 = RSVM
+#             resultsData[exp]['P'].append(P)
+#             resultsData[exp]['A'].append(A)
+#             resultsData[exp]['R'].append(R)
+#             resultsData[exp]['F1'].append(F1)
+#             print 'EXP:[%s]       P:%1.2f A:%1.2f R:%1.2f F1:%1.2f' % (exp,P,A,R,F1)
+#           except:
+#             resultsData[exp]['P'].append(-1)
+#             resultsData[exp]['A'].append(-1)
+#             resultsData[exp]['R'].append(-1)
+#             resultsData[exp]['F1'].append(-1)
+#   for exp, r in resultsData.iteritems():
+#       if r['P'] == []:
+#         continue 
+#       P = sum(r['P'])-(r['P'].count(-1)*-1)
+#       P = P/(len(r['P'])-r['P'].count(-1))
+#       A = sum(r['A'])-(r['A'].count(-1)*-1)
+#       A = A/(len(r['A'])-r['A'].count(-1))
+#       R = sum(r['R'])-(r['R'].count(-1)*-1)
+#       R = R/(len(r['R'])-r['R'].count(-1))
+#       F1 = sum(r['F1'])-(r['F1'].count(-1)*-1)
+#       F1 = F1/(len(r['F1'])-r['F1'].count(-1))
+#       resultsW.write('%s;%1.3f;%1.3f;%1.4f;%1.2f\n' % (exp,P,A,R,F1))

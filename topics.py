@@ -36,14 +36,14 @@ class Topics:
 	    return normalized
 
 
-	def lda(self,expression,topics)
+	def lda(self,expression,topics=3):
 		doc_clean = [self.clean(doc).split() for doc in self.docs[expression]] 
 		self.dictionary = corpora.Dictionary(doc_clean)
 		doc_term_matrix = [self.dictionary.doc2bow(doc) for doc in doc_clean]
 		Lda = gensim.models.ldamodel.LdaModel
 		self.ldamodel = Lda(doc_term_matrix, num_topics=topics, id2word = dictionary, passes=50)
 
-	def lda_doc(self,doc,topics):
+	def lda_doc(self,doc,topics=3):
 		r = (ldamodel.get_document_topics(self,dictionary.doc2bow(clean(doc).split()),per_word_topics=True))
 		for j in r[0][0:topics]:
 			print dictionary[j[0]],j[1]
@@ -52,3 +52,11 @@ class Topics:
 
 if "__main__":
 	t = Topics('cook_mwe.txt',os.getcwd()+'/Texts')
+	t.lda('blow_whistle')
+	for i in t.docs['blow_whistle']:
+		t.lda_doc(i)
+
+
+
+
+
