@@ -16,6 +16,8 @@ class Topics:
 		self.lemma = WordNetLemmatizer()
 		self.ldamodel = None
 		self.dictionary = None
+		self.punctuations = exclude = set(string.punctuation)
+		self.doc_term_matrix = None
 
 	def joinDocs(self):
 		d = {}
@@ -28,9 +30,9 @@ class Topics:
 
 	
 	def clean(self,doc):
-	    
+	     
 	    stop_free = " ".join([i for i in doc.lower().split() if i not in self.MWES.stopwords])
-	    punc_free = ''.join(ch for ch in stop_free if ch not in '.,:;-?!')
+	    punc_free = ''.join(ch for ch in stop_free if ch not in self.punctuations)
 	    normalized = " ".join(self.lemma.lemmatize(word) for word in punc_free.split())
 	    
 	    return normalized
@@ -39,15 +41,12 @@ class Topics:
 	def lda(self,expression,topics=3):
 		doc_clean = [self.clean(doc).split() for doc in self.docs[expression]] 
 		self.dictionary = corpora.Dictionary(doc_clean)
-		doc_term_matrix = [self.dictionary.doc2bow(doc) for doc in doc_clean]
+		self.doc_term_matrix = [self.dictionary.doc2bow(doc) for doc in doc_clean]
 		Lda = gensim.models.ldamodel.LdaModel
-		self.ldamodel = Lda(doc_term_matrix, num_topics=topics, id2word = self.dictionary, passes=50)
+		self.ldamodel = Lda(self.doc_term_matrix, num_topics=topics, id2word = self.dictionary, passes=50)
 
 	def lda_doc(self,doc,topics=3):
-		r = (self.ldamodel.get_document_topics(self.dictionary.doc2bow(self.clean(doc).split()),per_word_topics=True))
-		for j in r:
-			print j
-
+		return  self.ldamodel.get_document_topics(doc)
 
 
 if "__main__":
@@ -55,9 +54,19 @@ if "__main__":
 	t.lda('blow_whistle')
 	for i in t.docs['blow_whistle']:
 		print i
-		t.lda_doc(i)
+		print t.lda_doc(t.doc_term_matrix[0])
 		print '*'*40
 
+
+TODO: conforme a saida
+
+****************************************
+reach the ball or try to do so england whistle blow league play allow
+
+testar com N tamanhos de topicos e de palavras
+mostrar qual texto esta sendo utilizado
+[(0, 0.017971505609338589), (1, 0.96420589942684309), (2, 0.017822594963818279)]
+mostrar os topicos juntamente com a pontuacao
 
 
 
