@@ -18,6 +18,7 @@ class Topics:
 		self.dictionary = None
 		self.punctuations = exclude = set(string.punctuation)
 		self.doc_term_matrix = None
+		self.docs_clean = None
 
 	def joinDocs(self):
 		d = {}
@@ -38,12 +39,13 @@ class Topics:
 	    return normalized
 
 
-	def lda(self,expression,topics=3):
-		doc_clean = [self.clean(doc).split() for doc in self.docs[expression]] 
-		self.dictionary = corpora.Dictionary(doc_clean)
-		self.doc_term_matrix = [self.dictionary.doc2bow(doc) for doc in doc_clean]
+	def lda(self,expression,topics=3,words=3):
+		self.doc_clean = [self.clean(doc).split() for doc in self.docs[expression]] 
+		self.dictionary = corpora.Dictionary(self.doc_clean)
+		self.doc_term_matrix = [self.dictionary.doc2bow(doc) for doc in self.doc_clean]
 		Lda = gensim.models.ldamodel.LdaModel
 		self.ldamodel = Lda(self.doc_term_matrix, num_topics=topics, id2word = self.dictionary, passes=50)
+		print self.ldamodel.print_topics(num_topics=topics)
 
 	def lda_doc(self,doc,topics=3):
 		return  self.ldamodel.get_document_topics(doc)
@@ -52,21 +54,21 @@ class Topics:
 if "__main__":
 	t = Topics('cook_mwe.txt',os.getcwd()+'/Texts')
 	t.lda('blow_whistle')
-	for i in t.docs['blow_whistle']:
-		print i
-		print t.lda_doc(t.doc_term_matrix[0])
+	for i in xrange(len(t.doc_term_matrix)):
+		print t.doc_clean[i]
+		print t.lda_doc(t.doc_term_matrix[i])
 		print '*'*40
 
 
-TODO: conforme a saida
+# TODO: conforme a saida
 
-****************************************
-reach the ball or try to do so england whistle blow league play allow
+# ****************************************
+# reach the ball or try to do so england whistle blow league play allow
 
-testar com N tamanhos de topicos e de palavras
-mostrar qual texto esta sendo utilizado
-[(0, 0.017971505609338589), (1, 0.96420589942684309), (2, 0.017822594963818279)]
-mostrar os topicos juntamente com a pontuacao
+# testar com N tamanhos de topicos e de palavras
+# mostrar qual texto esta sendo utilizado
+# [(0, 0.017971505609338589), (1, 0.96420589942684309), (2, 0.017822594963818279)]
+# mostrar os topicos juntamente com a pontuacao
 
 
 
